@@ -152,9 +152,9 @@ function NoKeyBanner() {
   const router = useRouter();
   return (
     <View style={[styles.noKeyBanner, { backgroundColor: colors.amberDim, borderColor: 'rgba(255,182,39,0.25)' }]}>
-      <Text style={[styles.noKeyTitle, { color: colors.amber }]}>Gemini API Key Required</Text>
+      <Text style={[styles.noKeyTitle, { color: colors.amber }]}>No Gemini Key Detected</Text>
       <Text style={[styles.noKeyBody, { color: colors.t3 }]}>
-        FloAI needs a Gemini API key to work. It's free to get — go to Settings to add yours.
+        FloAI works with the server's built-in key by default. If you'd like to use your own personal key, you can add one in Settings.
       </Text>
       <View style={styles.noKeyBtns}>
         <Pressable

@@ -126,12 +126,12 @@ const HELP_SECTIONS: HelpSection[] = [
   {
     id: 'gemini',
     icon: (c) => <IconKey color={c} size={18} />,
-    title: 'Getting Your Gemini API Key',
+    title: 'Gemini AI (FloAI)',
     accentKey: 'amber',
     items: [
       {
-        q: 'What is the Gemini API Key?',
-        a: 'FloAI (the chat advisor) is powered by Google Gemini 2.5 Flash, a fast and capable AI from Google. To use it, you need a personal API key — it\'s like a password that lets the app access Gemini on your behalf.',
+        q: 'Do I need my own Gemini API Key?',
+        a: 'No — the FloBoard server already has a Gemini key configured, so FloAI works out of the box without any setup from you. If you\'d prefer to use your own personal key (for example to avoid shared quota limits), you can add one in Settings → Gemini API Key and it will be used instead of the server\'s key.'
       },
       {
         q: 'How do I get a free key?',
@@ -143,11 +143,11 @@ const HELP_SECTIONS: HelpSection[] = [
       },
       {
         q: 'Is my key safe?',
-        a: 'Your key is stored only on your device using encrypted local storage. It is never sent to FloBoard\'s servers. It goes directly to Google\'s API each time you send a message.',
+        a: 'Your key is stored only on your device using encrypted local storage. It is never sent to any FloBoard servers. It goes directly to Google\'s Gemini API each time you send a message. If you don\'t add a personal key, the server\'s built-in key is used and your device never handles a key at all.'
       },
       {
-        q: 'What happens without a key?',
-        a: 'All market data tabs (Markets, Crypto, FX Pairs, News, Watchlist, Portfolio) work perfectly without a key. Only the FloAI Advisor chat requires one.',
+        q: 'What happens without a personal key?',
+        a: 'All market data tabs (Markets, Crypto, FX Pairs, News, Watchlist, Portfolio) work perfectly without a personal key. FloAI also works — the server uses its own configured Gemini key. You only need to add a personal key if you want to use your own Gemini quota instead of the shared server key.'
       },
     ],
   },
@@ -279,7 +279,7 @@ const HELP_SECTIONS: HelpSection[] = [
       },
       {
         q: 'What if FloAI says my quota is reached?',
-        a: 'The free Gemini tier resets every 24 hours. If you hit the limit, wait until the next day or upgrade your Gemini API plan at aistudio.google.com.',
+        a: 'The free Gemini tier resets every 24 hours. If the server\'s key hits its quota, FloAI falls back to a built-in local analysis for common topics (gold, crypto, stocks, forex, general macro). If you\'re using your own personal key and hit the limit, wait until the next day, upgrade your Gemini plan at aistudio.google.com, or remove your personal key to switch back to the server key.'
       },
       {
         q: 'How does the Risk Profile affect FloAI?',
@@ -379,7 +379,7 @@ const HELP_SECTIONS: HelpSection[] = [
       },
       {
         q: 'The FloAI Advisor is not responding',
-        a: 'Check that your Gemini API key is entered correctly in Settings. If the key is valid, the issue may be a temporary Gemini service outage — wait a minute and try again. Make sure you have an active internet connection.',
+        a: 'Make sure you have an active internet connection. If you\'re using your own personal key, check that it is entered correctly in Settings. If the key is valid, the issue may be a temporary Gemini service outage — wait a minute and try again. If you\'re relying on the server key, FloAI will fall back to local analysis for common topics during outages.'
       },
       {
         q: 'How do I reset the app?',
@@ -395,7 +395,7 @@ const HELP_SECTIONS: HelpSection[] = [
     items: [
       {
         q: 'Gemini API Key',
-        a: 'Your personal Google Gemini API key that powers the FloAI Advisor. Go to Settings → FloAI Advisor to add, update, or remove it. The key is stored only on your device. Without a key, all market data tabs still work — only the AI chat is locked.',
+        a: 'Optional. The FloBoard server already has a Gemini key configured, so FloAI works without any setup. If you want to use your own personal Gemini API key instead (to avoid shared quota limits), go to Settings → FloAI Advisor to add, update, or remove it. The key is stored only on your device and is never uploaded.'
       },
       {
         q: 'Investor Profile (Risk Profile)',
@@ -521,7 +521,8 @@ export default function HelpScreen() {
           <Text style={[styles.quickStartTitle, { color: colors.gain }]}>Quick Start</Text>
           <Text style={[styles.quickStartBody, { color: colors.t2 }]}>
             FloBoard gives you live market data for stocks, crypto, forex, and news — all free, no account needed.{'\n\n'}
-            To unlock the <Text style={{ fontFamily: 'Inter_600SemiBold', color: colors.t1 }}>FloAI Advisor</Text> chat (powered by Gemini 2.5 Flash), add a free API key in{' '}
+            The <Text style={{ fontFamily: 'Inter_600SemiBold', color: colors.t1 }}>FloAI Advisor</Text> chat (powered by Gemini 2.5 Flash) works out of the box — no API key needed. The server uses its own Gemini key so you can start chatting immediately.{'\n\n'}
+            If you want to use your own personal Gemini key instead (to avoid shared quota), add it in{' '}
             <Text style={{ fontFamily: 'Inter_600SemiBold', color: colors.t1 }}>Settings → Gemini API Key</Text>.{'\n\n'}
             Tap any section below to learn more.
           </Text>
@@ -539,7 +540,7 @@ export default function HelpScreen() {
 
         <View style={[styles.footer, { borderColor: colors.rim }]}>
           <Text style={[styles.footerText, { color: colors.t4 }]}>
-            FloBoard v1.1 · Market data from Yahoo Finance · AI by Google Gemini 2.5 Flash{'\n'}
+            FloBoard v1.2 · Market data from Yahoo Finance · AI by Google Gemini 2.5 Flash{'\n'}
             For informational use only — not financial advice.
           </Text>
         </View>

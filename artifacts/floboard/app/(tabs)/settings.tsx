@@ -380,7 +380,7 @@ function GeminiKeyCard() {
         <View>
           <Text style={[styles.rowLabel, { color: colors.t1 }]}>Gemini API Key</Text>
           <Text style={[styles.rowDesc, { color: colors.t3, marginTop: 2 }]}>
-            Required for the FloAI advisor chat
+            Optional — FloAI works without it (uses server key)
           </Text>
         </View>
         <View style={[styles.statusPill, {
@@ -389,7 +389,7 @@ function GeminiKeyCard() {
         }]}>
           <View style={[styles.statusDot, { backgroundColor: hasKey ? colors.gain : colors.loss }]} />
           <Text style={[styles.statusText, { color: hasKey ? colors.gain : colors.loss }]}>
-            {hasKey ? 'ACTIVE' : 'NOT SET'}
+            {hasKey ? 'ACTIVE' : 'USING SERVER KEY'}
           </Text>
         </View>
       </View>
@@ -427,7 +427,7 @@ function GeminiKeyCard() {
       ) : (
         <View style={styles.viewArea}>
           <Text style={[styles.maskedKey, { color: hasKey ? colors.t2 : colors.t3 }]} numberOfLines={1}>
-            {hasKey ? masked : 'No key — FloAI is disabled'}
+            {hasKey ? masked : 'Using server key — add your own to override'}
           </Text>
           <View style={styles.viewBtns}>
             <Pressable onPress={handleEdit} style={[styles.editBtn, { backgroundColor: colors.surface, borderColor: colors.rim }]}>
@@ -577,7 +577,7 @@ export default function SettingsScreen() {
           label="FLOAI ADVISOR"
           icon={<Icon.Brain c={colors.amber} s={14} />}
           color={colors.amber}
-          desc="Powered by Google Gemini 2.5 Flash. Add a free API key to enable the chat advisor."
+          desc="Powered by Google Gemini 2.5 Flash. Works out of the box — add your own key to use your personal quota instead."
         />
         <GeminiKeyCard />
 
@@ -798,7 +798,7 @@ export default function SettingsScreen() {
           icon={<Icon.Info c={colors.blue} s={14} />}
           color={colors.blue}
         />
-        <InfoRow label="FloBoard" value="v1.1" />
+        <InfoRow label="FloBoard" value="v1.2" />
         <InfoRow label="Market data" value="Yahoo Finance (live)" />
         <InfoRow label="AI advisor" value="Google Gemini 2.5 Flash" />
         <NavRow label="About FloBoard" onPress={() => router.push('/about')} />
