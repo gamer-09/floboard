@@ -325,9 +325,15 @@ export default function AdvisorScreen() {
       <div className="chat-input">
         <div className="chat-box">
           <textarea
+            ref={fieldRef}
             className="field chat-field"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value)
+              const el = e.currentTarget
+              el.style.height = 'auto'
+              el.style.height = `${Math.min(el.scrollHeight, 140)}px`
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

@@ -162,6 +162,7 @@ html, body, #root, * {
 .shell-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -209,11 +210,16 @@ html, body, #root, * {
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
-.content.no-pad { overflow: hidden; }
+.content.no-pad {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 .page {
   padding: 18px 22px 48px;
@@ -739,11 +745,21 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
 .earn-est small { display: block; font-size: 9px; color: var(--t4); font-weight: 700; letter-spacing: .5px; }
 
 /* ── Chat ──────────────────────────────────────────────────────────────── */
-.chat {
-  height: 100%;
+.chat-keep {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+.chat {
+  flex: 1;
+  height: 100%;
   min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .chat-risk {
   display: flex;
@@ -752,25 +768,38 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   border-bottom: 1px solid var(--rim);
   background: color-mix(in srgb, var(--base) 88%, transparent);
   flex-shrink: 0;
-  max-width: 720px;
+  max-width: min(880px, 100%);
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
 }
-.chat-risk .seg-btn { flex: 1; text-align: center; max-width: 180px; }
+.chat-risk .seg-btn { flex: 1; text-align: center; max-width: 200px; }
 .chat-thread {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px 20px 12px;
+  overflow-x: hidden;
+  padding: 20px 20px 16px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-.chat-inner { max-width: 720px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.chat-inner {
+  max-width: min(880px, 100%);
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 8px;
+}
 .bubble {
-  max-width: 78%;
+  max-width: min(720px, 86%);
   padding: 12px 16px;
   border-radius: 16px;
   font-size: 14px;
   line-height: 1.65;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 .bubble.user {
@@ -800,12 +829,13 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
 }
 .suggest button:hover { color: var(--t1); border-color: var(--rim2); }
 .chat-input {
+  flex-shrink: 0;
   padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--rim);
-  background: color-mix(in srgb, var(--base) 88%, transparent);
+  background: color-mix(in srgb, var(--base) 92%, transparent);
 }
 .chat-box {
-  max-width: 720px;
+  max-width: min(880px, 100%);
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -943,7 +973,7 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   background: color-mix(in srgb, var(--base) 88%, transparent);
   flex-shrink: 0;
   justify-content: center;
-  max-width: 720px;
+  max-width: min(880px, 100%);
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -1041,6 +1071,9 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   .asset.fx { grid-template-columns: minmax(0,1fr) auto; }
   .chat-thread { padding: 16px 14px 8px; }
   .bubble { max-width: 92%; }
+  .chat-ribbon { justify-content: flex-start; }
+  .chat-risk { flex-wrap: wrap; justify-content: stretch; }
+  .chat-risk .seg-btn { max-width: none; }
   .setting-row { flex-direction: column; align-items: flex-start; }
   .field, .search input { font-size: 16px; }
   .search { height: 48px; }

@@ -60,9 +60,11 @@ function AppRoutes() {
         className="chat-keep"
         style={{
           display: onAdvisor ? 'flex' : 'none',
-          height: '100%',
-          flexDirection: 'column',
+          flex: onAdvisor ? 1 : undefined,
+          height: onAdvisor ? '100%' : 0,
           minHeight: 0,
+          width: '100%',
+          flexDirection: 'column',
         }}
       >
         <Advisor />
