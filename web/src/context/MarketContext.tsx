@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { ALL_SYMBOLS, BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, MACRO, SECTORS, STOCKS } from '../constants/marketData'
 import { useSettings } from './SettingsContext'
 import { getApiBase, resolveApiBase } from '../utils/apiBase'
-import { resolveSymbolAlias, getFallbackQuote, getFallbackMcap } from '../utils/symbolFallbacks'
+import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap } from '../utils/symbolFallbacks'
 import { fmt, fmtChg, fmtMcap, chgDir, fmtPrice } from '../utils/format'
 
 export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice }
@@ -88,6 +88,13 @@ export function isSyntheticQuote(q: QuoteData | undefined): boolean {
   return Math.abs(q.regularMarketDayHigh - expected) < 0.001
 }
 
+function withExactMcap(q: QuoteData, prev?: QuoteData): QuoteData {
+  if (!isFallbackMcap(q.symbol, q.marketCap)) return q
+  const keep = prev && !isFallbackMcap(prev.symbol, prev.marketCap) ? prev.marketCap : 0
+  if (keep === q.marketCap) return q
+  return { ...q, marketCap: keep }
+}
+
 function readUserSymbols(): string[] {
   const out: string[] = []
   const keys = ['floboard:watchlist', 'floboard:watchlist:Tech', 'floboard:watchlist:Crypto', 'floboard:watchlist:Macro']
@@ -164,7 +171,7 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boo
       regularMarketVolume: (meta.regularMarketVolume as number) ?? 0,
       fiftyTwoWeekHigh: (meta.fiftyTwoWeekHigh as number) ?? undefined,
       fiftyTwoWeekLow: (meta.fiftyTwoWeekLow as number) ?? undefined,
-      marketCap: (meta.marketCap as number) || getFallbackMcap(sym),
+      marketCap: (typeof meta.marketCap === 'number' && meta.marketCap > 0) ? meta.marketCap as number : 0,
     }
     return { quote, live: true }
   } catch {
@@ -196,7 +203,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       12000,
     )
     if (!res.ok) return null
-    const json = await res.json() as { prices?: Array<{ t: number; c: number }> }
+    const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string }
     const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
     if (prices.length < 2) return null
     const last = prices[prices.length - 1]
@@ -216,9 +223,12 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
     const change = last.c - prev
     const changePct = prev ? (change / prev) * 100 : 0
     const window = prices.slice(-24).map((p) => p.c)
+    const mcap = typeof json.marketCap === 'number' && json.marketCap > 0 && !isFallbackMcap(sym, json.marketCap)
+      ? json.marketCap
+      : 0
     return {
       symbol: sym,
-      shortName: fallback.shortName,
+      shortName: json.shortName || fallback.shortName,
       quoteType: fallback.quoteType,
       currency: fallback.currency,
       regularMarketPrice: last.c,
@@ -228,7 +238,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       regularMarketDayHigh: Math.max(...window),
       regularMarketDayLow: Math.min(...window),
       regularMarketVolume: 0,
-      marketCap: fallback.marketCap,
+      marketCap: mcap,
     }
   } catch {
     return null
@@ -245,7 +255,7 @@ async function hydrateQuotes(quotes: QuoteData[], concurrency = 6): Promise<{ re
     const settled = await Promise.all(slice.map((idx) => quoteFromHistory(out[idx].symbol)))
     settled.forEach((q, j) => {
       if (q && !isSyntheticQuote(q)) {
-        out[slice[j]] = q
+        out[slice[j]] = withExactMcap(q, out[slice[j]])
         live++
       }
     })
@@ -314,7 +324,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
         // Never store a fake fallback for a ticker that is not in the in-app catalog.
         if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
-        map[q.symbol] = q
+        map[q.symbol] = withExactMcap(q, prev[q.symbol])
       })
       return map
     })
@@ -346,7 +356,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         const old = prev[q.symbol]
         if (isSyntheticQuote(q) && old && !isSyntheticQuote(old)) return
         if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
-        map[q.symbol] = q
+        map[q.symbol] = withExactMcap(q, old)
       })
       symbols.forEach((s) => {
         if (!map[s] && KNOWN_SET.has(s)) map[s] = getFallbackQuote(s)

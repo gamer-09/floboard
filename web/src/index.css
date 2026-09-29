@@ -639,7 +639,7 @@ table.data td {
 }
 table.data tr:last-child td { border-bottom: none; }
 table.data tbody tr:hover td { background: color-mix(in srgb, var(--surface) 70%, transparent); }
-table.data .num { font-family: var(--mono); font-weight: 600; text-align: right; }
+table.data .num { font-family: var(--mono); font-weight: 600; text-align: right; white-space: nowrap; }
 
 .asset-list { display: flex; flex-direction: column; gap: 8px; }
 .asset {

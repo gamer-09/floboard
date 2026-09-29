@@ -1,5 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import { Router } from "express";
+import { fetchLiveQuotes } from "../lib/yahooQuotes";
 
 const router = Router();
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -245,60 +246,75 @@ router.get("/market", async (req, res) => {
   }
 
   try {
-    const settled = await Promise.allSettled(
-      symbols.map((sym) => {
-        const targetSym = resolveSymbolAlias(sym);
-        return yf.quote(
-          targetSym,
-          {
-            fields: [
-              "symbol",
-              "shortName",
-              "quoteType",
-              "currency",
-              "regularMarketPrice",
-              "regularMarketChangePercent",
-              "regularMarketChange",
-              "regularMarketPreviousClose",
-              "regularMarketOpen",
-              "regularMarketDayHigh",
-              "regularMarketDayLow",
-              "regularMarketVolume",
-              "fiftyTwoWeekHigh",
-              "fiftyTwoWeekLow",
-              "marketCap",
-              "preMarketPrice",
-              "preMarketChangePercent",
-              "postMarketPrice",
-              "postMarketChangePercent",
-              "bid",
-              "ask",
-            ],
-          },
-          // Skip schema validation — futures & forex cause loud warnings but data is valid
-          { validateResult: false }
-        );
-      })
-    );
+    const live = await fetchLiveQuotes(symbols, resolveSymbolAlias);
+    const missing = symbols.filter((s) => !live.has(s));
 
-    // Build results, stamping each quote with the *requested* symbol.
-    // Yahoo Finance sometimes normalises symbols (e.g. "BRK-B" → "BRK.B", or
-    // returns a different casing/format). The client maps results by the symbol
-    // it originally sent, so we must guarantee the key matches.
-    const results: unknown[] = [];
-    for (let i = 0; i < settled.length; i++) {
+    const settled = missing.length
+      ? await Promise.allSettled(
+          missing.map((sym) => {
+            const targetSym = resolveSymbolAlias(sym);
+            return yf.quote(
+              targetSym,
+              {
+                fields: [
+                  "symbol",
+                  "shortName",
+                  "quoteType",
+                  "currency",
+                  "regularMarketPrice",
+                  "regularMarketChangePercent",
+                  "regularMarketChange",
+                  "regularMarketPreviousClose",
+                  "regularMarketOpen",
+                  "regularMarketDayHigh",
+                  "regularMarketDayLow",
+                  "regularMarketVolume",
+                  "fiftyTwoWeekHigh",
+                  "fiftyTwoWeekLow",
+                  "marketCap",
+                  "preMarketPrice",
+                  "preMarketChangePercent",
+                  "postMarketPrice",
+                  "postMarketChangePercent",
+                  "bid",
+                  "ask",
+                ],
+              },
+              // Skip schema validation — futures & forex cause loud warnings but data is valid
+              { validateResult: false }
+            );
+          })
+        )
+      : [];
+
+    const yfByRequested = new Map<string, Record<string, unknown>>();
+    for (let i = 0; i < missing.length; i++) {
       const r = settled[i];
-      const requestedSym = symbols[i];
       if (
         r.status === "fulfilled" &&
         r.value != null &&
         typeof (r.value as Record<string, unknown>).regularMarketPrice === "number"
       ) {
-        const quote = r.value as Record<string, unknown>;
-        quote.marketCap = (quote.marketCap as number) || getFallbackMcap(requestedSym);
+        yfByRequested.set(missing[i], r.value as Record<string, unknown>);
+      }
+    }
+
+    // Stamp each quote with the *requested* symbol. Yahoo sometimes normalises
+    // (e.g. "BRK-B" → "BRK.B"); the client maps by the key it sent.
+    const results: unknown[] = [];
+    for (const requestedSym of symbols) {
+      const crumbQuote = live.get(requestedSym);
+      if (crumbQuote) {
+        results.push(crumbQuote);
+        continue;
+      }
+      const quote = yfByRequested.get(requestedSym);
+      if (quote) {
+        const mcap = quote.marketCap;
+        quote.marketCap = typeof mcap === "number" && mcap > 0 ? mcap : 0;
         results.push({ ...quote, symbol: requestedSym });
       } else {
-        req.log?.debug({ symbol: symbols[i] }, "Using fallback quote for symbol");
+        req.log?.debug({ symbol: requestedSym }, "Using fallback quote for symbol");
         results.push(getFallbackQuote(requestedSym));
       }
     }
@@ -440,7 +456,20 @@ router.get("/market/history", async (req, res) => {
       prices = generateRealisticHistory(sym, range, basePrice, nowSec, stepSec, count);
     }
 
-    const payload = { symbol: sym, range, prices };
+    let marketCap = 0;
+    let shortName: string | undefined;
+    try {
+      const live = await fetchLiveQuotes([sym], resolveSymbolAlias);
+      const q = live.get(sym);
+      if (q) {
+        marketCap = q.marketCap || 0;
+        shortName = q.shortName;
+      }
+    } catch {
+      /* quote crumb is optional for history */
+    }
+
+    const payload = { symbol: sym, range, prices, marketCap, shortName };
     setCache(cacheKey, payload, ttlMs);
     res.json(payload);
   } catch {

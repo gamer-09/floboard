@@ -12,11 +12,11 @@ export function fmtChg(n: number | null | undefined): string {
 }
 
 export function fmtMcap(v: number | null | undefined, compact = true): string {
-  if (v == null || !Number.isFinite(v)) return '—'
+  if (v == null || !Number.isFinite(v) || v === 0) return '—'
   const sign = v < 0 ? '-' : ''
   const a = Math.abs(v)
   if (!compact) {
-    return sign + '$' + a.toLocaleString('en-US', { maximumFractionDigits: 0 })
+    return sign + '$' + Math.round(a).toLocaleString('en-US')
   }
   if (a >= 1e12) return sign + '$' + fmt(a / 1e12, 2) + 'T'
   if (a >= 1e9) return sign + '$' + fmt(a / 1e9, 1) + 'B'

@@ -106,6 +106,12 @@ export function getFallbackMcap(sym: string): number {
   return 50000000000
 }
 
+/** True when marketCap is the rounded placeholder, not a live Yahoo figure. */
+export function isFallbackMcap(sym: string, mcap: number | null | undefined): boolean {
+  if (mcap == null || !Number.isFinite(mcap) || mcap <= 0) return true
+  return mcap === getFallbackMcap(sym)
+}
+
 const FALLBACK_PRICES: Record<string, { price: number; changePct: number; change: number; name: string; currency: string }> = {
   'XAUUSD=X': { price: 4025.80, changePct: 0.45, change: 18.20, name: 'Gold Spot / USD', currency: 'USD' },
   'XAU/USD': { price: 4025.80, changePct: 0.45, change: 18.20, name: 'Gold Spot / USD', currency: 'USD' },

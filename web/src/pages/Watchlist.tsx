@@ -327,7 +327,7 @@ export default function WatchlistScreen() {
                           {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{fmt(d.regularMarketDayHigh, dec)}</div></div>}
                           {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{fmt(d.regularMarketDayLow, dec)}</div></div>}
                           {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
-                          {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap)}</div></div> : null}
+                          {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap, settings.compactNumbers)}</div></div> : null}
                         </div>
                       </>
                     ) : (

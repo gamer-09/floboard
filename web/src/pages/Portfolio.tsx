@@ -143,7 +143,7 @@ export default function PortfolioScreen() {
             </div>
             <div className="kpi">
               <div className="kpi-label">Unrealised P&amp;L</div>
-              <div className="kpi-val" style={{ color: totalPnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>{totalPnl >= 0 ? '+' : ''}{fmtMcap(totalPnl)} ({fmtChg(totalPnlPct)})</div>
+              <div className="kpi-val" style={{ color: totalPnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>{totalPnl >= 0 ? '+' : ''}{fmtMcap(totalPnl, settings.compactNumbers)} ({fmtChg(totalPnlPct)})</div>
             </div>
           </div>
 
@@ -224,7 +224,7 @@ export default function PortfolioScreen() {
                 <div className="hold-pnl">
                   <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>Unrealised P&L</span>
                   <span className="mono" style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 700 }}>
-                    {pnl >= 0 ? '+' : ''}{fmtMcap(pnl)} ({fmtChg(pnlPct)})
+                    {pnl >= 0 ? '+' : ''}{fmtMcap(pnl, settings.compactNumbers)} ({fmtChg(pnlPct)})
                   </span>
                 </div>
                 <div className="pnl-track"><div className="pnl-fill" style={{ width: `${Math.min(100, Math.abs(pnlPct) / 2)}%`, background: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }} /></div>

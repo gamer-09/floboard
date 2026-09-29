@@ -39,7 +39,7 @@ export default function SettingsScreen() {
         <SettingRow label="Price decimals" desc="How many places after the point">
           <OptionGroup options={[{ label: '2', value: 2 }, { label: '4', value: 4 }]} value={settings.priceDecimals} onChange={(v) => updateSetting('priceDecimals', v as PriceDecimals)} />
         </SettingRow>
-        <SettingRow label="Compact numbers" desc="Shorten large figures (e.g. $1.2T)">
+        <SettingRow label="Compact numbers" desc="On: $1.2T. Off: the full Yahoo figure (not a rounded placeholder).">
           <Toggle checked={settings.compactNumbers} onChange={(v) => updateSetting('compactNumbers', v)} />
         </SettingRow>
         <SettingRow label="Show extended hours" desc="Use pre-market and after-hours prices where available">
