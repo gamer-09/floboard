@@ -132,8 +132,9 @@ async function fetchEarnings(weeks: number): Promise<EarningItem[]> {
   return filterByWeeks(FALLBACK_EARNINGS)
 }
 
-function fmtRevenue(n: number | null): string {
+function fmtRevenue(n: number | null, compact: boolean): string {
   if (!n) return '—'
+  if (!compact) return '$' + Math.round(n).toLocaleString('en-US')
   if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`
   if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`
   return `$${n.toFixed(0)}`
@@ -225,7 +226,7 @@ export default function NewsScreen() {
                   <span className={`chg ${isToday ? 'flat' : isSoon ? 'up' : 'flat'}`}>{label}</span>
                   <div className="earn-est">
                     {item.epsEst != null && <span><small>EPS</small> {item.epsEst > 0 ? '+' : ''}{item.epsEst.toFixed(2)}</span>}
-                    {item.revenueEst != null && <span><small>REV</small> {fmtRevenue(item.revenueEst)}</span>}
+                    {item.revenueEst != null && <span><small>REV</small> {fmtRevenue(item.revenueEst, settings.compactNumbers)}</span>}
                   </div>
                 </div>
               </button>

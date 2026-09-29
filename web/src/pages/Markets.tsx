@@ -4,9 +4,10 @@ import SparklineChart from '../components/SparklineChart'
 import { ChangeBadge, Section, Segmented } from '../components/ui'
 import { EXCHANGES, getExchangeStatus } from '../constants/exchanges'
 import { BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, SECTORS, STOCKS } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, fmtMcap, useMarket } from '../context/MarketContext'
+import { chgDir, fmt, fmtChg, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { useColors } from '../hooks/useColors'
+import { useFormat } from '../hooks/useFormat'
 
 const RIBBON = [
   { sym: '^GSPC', label: 'S&P 500', kind: 'idx' as const },
@@ -17,16 +18,17 @@ const RIBBON = [
   { sym: '^TNX', label: '10Y', kind: 'yield' as const },
 ]
 
-function formatRibbon(kind: 'idx' | 'btc' | 'dxy' | 'yield', price?: number) {
+function formatRibbon(kind: 'idx' | 'btc' | 'dxy' | 'yield', price: number | undefined, compact: boolean) {
   if (price == null) return '—'
   if (kind === 'yield') return `${fmt(price, 2)}%`
   if (kind === 'dxy') return fmt(price, 2)
-  if (kind === 'btc') return `$${fmt(price, 0)}`
-  return fmt(price, 0)
+  if (kind === 'btc') return `$${fmt(price, compact ? 0 : 2)}`
+  return fmt(price, compact ? 0 : 2)
 }
 
 function IndexCard({ sym, name, region }: { sym: string; name: string; region: string }) {
   const { data } = useMarket()
+  const { index } = useFormat()
   const d = data[sym]
   const chg = d?.regularMarketChangePercent ?? 0
   const dir = chgDir(chg)
@@ -37,7 +39,7 @@ function IndexCard({ sym, name, region }: { sym: string; name: string; region: s
       <div className="index-body">
         <div className="index-region">{region}</div>
         <div className="index-name">{name}</div>
-        <div className="index-price">{d ? fmt(d.regularMarketPrice, 0) : '—'}</div>
+        <div className="index-price">{d ? index(d.regularMarketPrice) : '—'}</div>
         <ChangeBadge value={d ? chg : null} />
         <div style={{ marginTop: 8 }}>
           <SparklineChart symbol={sym} range="7d" width={160} height={42} color={d ? accent : undefined} />
@@ -102,6 +104,7 @@ export default function MarketsScreen() {
   const c = useColors()
   const { data, lastUpdated } = useMarket()
   const { settings } = useSettings()
+  const { mcap, compact } = useFormat()
   const [moverTab, setMoverTab] = useState('All')
 
   const universe = useMemo(() => {
@@ -140,7 +143,7 @@ export default function MarketsScreen() {
           return (
             <div key={sym} className="kpi">
               <div className="kpi-label">{label}</div>
-              <div className="kpi-val">{formatRibbon(kind, d?.regularMarketPrice)}</div>
+              <div className="kpi-val">{formatRibbon(kind, d?.regularMarketPrice, compact)}</div>
               {d && <div className={`kpi-chg num-${dir}`}>{dir === 'up' ? '▲' : dir === 'dn' ? '▼' : '—'} {Math.abs(chg).toFixed(1)}%</div>}
             </div>
           )
@@ -321,9 +324,9 @@ export default function MarketsScreen() {
                       <div className="sym">{s.sym}</div>
                       <div className="muted">{s.name}</div>
                     </td>
-                    <td className="num">{d ? `$${fmt(d.regularMarketPrice, settings.priceDecimals)}` : '—'}</td>
+                    <td className="num">{d ? `$${fmt(d.regularMarketPrice, compact ? settings.priceDecimals : Math.max(settings.priceDecimals, 2))}` : '—'}</td>
                     <td className="num" style={{ color: dir === 'up' ? c.gain : dir === 'dn' ? c.loss : c.t2 }}>{d ? fmtChg(chg) : '—'}</td>
-                    <td className="num" style={{ color: 'var(--t3)' }}>{d ? fmtMcap(d.marketCap, settings.compactNumbers) : '—'}</td>
+                    <td className="num" style={{ color: 'var(--t3)' }}>{d ? mcap(d.marketCap, s.sym) : '—'}</td>
                   </tr>
                 )
               })}

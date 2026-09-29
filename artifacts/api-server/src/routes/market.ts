@@ -1,7 +1,7 @@
 import YahooFinance from "yahoo-finance2";
 import { Router } from "express";
 import { fetchLiveQuotes } from "../lib/yahooQuotes";
-import { attachNasdaqMcaps, fetchNasdaqMcaps } from "../lib/nasdaqMcap";
+import { attachNasdaqMcaps, fetchLiveMcaps } from "../lib/nasdaqMcap";
 
 const router = Router();
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -341,7 +341,7 @@ router.get("/market/mcap", async (req, res) => {
     .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 80);
-  const map = await fetchNasdaqMcaps(symbols);
+  const map = await fetchLiveMcaps(symbols);
   res.json({ results: Object.fromEntries(map) });
 });
 
@@ -450,11 +450,12 @@ router.get("/market/history", async (req, res) => {
 
   try {
     const targetSym = resolveSymbolAlias(sym);
-    let result: { quotes?: Array<{ close?: number | null; date: Date }> } = {};
+    let result: {
+      quotes?: Array<{ close?: number | null; volume?: number | null; date: Date }>;
+      meta?: { regularMarketVolume?: number; regularMarketPrice?: number };
+    } = {};
     try {
-      result = (await yf.chart(targetSym, { period1, interval }, { validateResult: false })) as {
-        quotes?: Array<{ close?: number | null; date: Date }>;
-      };
+      result = (await yf.chart(targetSym, { period1, interval }, { validateResult: false })) as typeof result;
     } catch {
       req.log?.debug({ symbol: sym, targetSym }, "Using fallback chart history");
     }
@@ -488,14 +489,23 @@ router.get("/market/history", async (req, res) => {
     }
     if (!marketCap) {
       try {
-        const caps = await fetchNasdaqMcaps([sym]);
+        const caps = await fetchLiveMcaps([sym]);
         marketCap = caps.get(sym) || 0;
       } catch {
-        /* nasdaq is optional */
+        /* live mcap is optional */
       }
     }
 
-    const payload = { symbol: sym, range, prices, marketCap, shortName };
+    const lastQuoteVol = result.quotes?.length
+      ? result.quotes[result.quotes.length - 1]?.volume
+      : undefined;
+    const volume =
+      (typeof result.meta?.regularMarketVolume === "number" && result.meta.regularMarketVolume > 0
+        ? result.meta.regularMarketVolume
+        : 0) ||
+      (typeof lastQuoteVol === "number" && lastQuoteVol > 0 ? lastQuoteVol : 0);
+
+    const payload = { symbol: sym, range, prices, marketCap, shortName, volume };
     setCache(cacheKey, payload, ttlMs);
     res.json(payload);
   } catch {

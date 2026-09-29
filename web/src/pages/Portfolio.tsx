@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { EmptyState } from '../components/ui'
 import { CRYPTOS, STOCKS } from '../constants/marketData'
-import { fmt, fmtChg, fmtMcap, isSyntheticQuote, useMarket } from '../context/MarketContext'
+import { fmtChg, isSyntheticQuote, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
+import { useFormat } from '../hooks/useFormat'
 import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
 
 interface Holding { id: string; symbol: string; shares: number; avgPrice: number }
@@ -37,6 +38,7 @@ function markPrice(sym: string, quote: { regularMarketPrice: number } | undefine
 export default function PortfolioScreen() {
   const { data, ensureSymbols } = useMarket()
   const { settings } = useSettings()
+  const { money } = useFormat()
   const [holdings, setHoldings] = useState<Holding[]>(loadHoldings)
   const [showAdd, setShowAdd] = useState(false)
   const [sym, setSym] = useState('')
@@ -135,15 +137,15 @@ export default function PortfolioScreen() {
           <div className="kpi-summary">
             <div className="kpi">
               <div className="kpi-label">Total value</div>
-              <div className="kpi-val">${fmt(totalValue)}</div>
+              <div className="kpi-val">{money(totalValue)}</div>
             </div>
             <div className="kpi">
               <div className="kpi-label">Cost basis</div>
-              <div className="kpi-val">${fmt(totalCost)}</div>
+              <div className="kpi-val">{money(totalCost)}</div>
             </div>
             <div className="kpi">
               <div className="kpi-label">Unrealised P&amp;L</div>
-              <div className="kpi-val" style={{ color: totalPnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>{totalPnl >= 0 ? '+' : ''}{fmtMcap(totalPnl, settings.compactNumbers)} ({fmtChg(totalPnlPct)})</div>
+              <div className="kpi-val" style={{ color: totalPnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>{totalPnl >= 0 ? '+' : ''}{money(totalPnl)} ({fmtChg(totalPnlPct)})</div>
             </div>
           </div>
 
@@ -217,14 +219,14 @@ export default function PortfolioScreen() {
                 </div>
                 <div className="hold-stats">
                   <div><div className="stat-lab">Qty</div><div className="stat-val">{h.shares}</div></div>
-                  <div><div className="stat-lab">Price</div><div className="stat-val">${fmt(price, settings.priceDecimals)}</div></div>
-                  <div><div className="stat-lab">Value</div><div className="stat-val" style={{ color: 'var(--amber)' }}>${fmt(value)}</div></div>
+                  <div><div className="stat-lab">Price</div><div className="stat-val">{money(price)}</div></div>
+                  <div><div className="stat-lab">Value</div><div className="stat-val" style={{ color: 'var(--amber)' }}>{money(value)}</div></div>
                   <div><div className="stat-lab">Today</div><div className="stat-val" style={{ color: dayCol }}>{live ? fmtChg(day) : '—'}</div></div>
                 </div>
                 <div className="hold-pnl">
                   <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>Unrealised P&L</span>
                   <span className="mono" style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)', fontWeight: 700 }}>
-                    {pnl >= 0 ? '+' : ''}{fmtMcap(pnl, settings.compactNumbers)} ({fmtChg(pnlPct)})
+                    {pnl >= 0 ? '+' : ''}{money(pnl)} ({fmtChg(pnlPct)})
                   </span>
                 </div>
                 <div className="pnl-track"><div className="pnl-fill" style={{ width: `${Math.min(100, Math.abs(pnlPct) / 2)}%`, background: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }} /></div>

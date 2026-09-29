@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
 import { CRYPTOS } from '../constants/marketData'
-import { chgDir, fmtChg, fmtMcap, fmtPrice, useMarket } from '../context/MarketContext'
-import { useSettings } from '../context/SettingsContext'
+import { chgDir, fmtChg, useMarket } from '../context/MarketContext'
+import { useFormat } from '../hooks/useFormat'
+import { isFallbackMcap } from '../utils/symbolFallbacks'
 
 type SortKey = 'default' | 'change' | 'change_asc' | 'mcap' | 'price'
 type Group = 'All' | 'Top' | 'Stable' | 'L1' | 'L2' | 'DeFi' | 'Meme' | 'Web3' | 'AI'
@@ -24,7 +25,7 @@ const GROUP_SYMS: Record<Group, string[] | null> = {
 export default function CryptoScreen() {
   const navigate = useNavigate()
   const { data } = useMarket()
-  const { settings } = useSettings()
+  const { price, mcap, vol } = useFormat()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('default')
   const [group, setGroup] = useState<Group>('All')
@@ -50,8 +51,11 @@ export default function CryptoScreen() {
   const loaded = CRYPTOS.filter((c) => data[c.sym])
   const up = loaded.filter((c) => (data[c.sym]?.regularMarketChangePercent ?? 0) > 0).length
   const dn = loaded.filter((c) => (data[c.sym]?.regularMarketChangePercent ?? 0) < 0).length
-  const totalCap = loaded.reduce((acc, c) => acc + (data[c.sym]?.marketCap ?? 0), 0)
-  const btcCap = data['BTC-USD']?.marketCap ?? 0
+  const totalCap = loaded.reduce((acc, c) => {
+    const m = data[c.sym]?.marketCap ?? 0
+    return isFallbackMcap(c.sym, m) ? acc : acc + m
+  }, 0)
+  const btcCap = isFallbackMcap('BTC-USD', data['BTC-USD']?.marketCap ?? 0) ? 0 : (data['BTC-USD']?.marketCap ?? 0)
   const btcDom = totalCap > 0 ? (btcCap / totalCap) * 100 : 0
 
   return (
@@ -62,7 +66,7 @@ export default function CryptoScreen() {
             { val: String(up), label: 'Gaining', color: 'var(--gain)' },
             { val: String(dn), label: 'Declining', color: 'var(--loss)' },
             { val: String(Math.max(0, loaded.length - up - dn)), label: 'Flat', color: 'var(--amber)' },
-            { val: fmtMcap(totalCap, settings.compactNumbers), label: 'Total cap' },
+            { val: mcap(totalCap), label: 'Total cap' },
             { val: `${btcDom.toFixed(1)}%`, label: 'BTC dom.', color: 'var(--amber)' },
           ]}
         />
@@ -117,7 +121,7 @@ export default function CryptoScreen() {
                   <SparklineChart symbol={ct.sym} range="7d" width={80} height={32} color={col} />
                 </div>
                 <div className="right">
-                  <div className="mono" style={{ fontWeight: 700 }}>{d ? `$${fmtPrice(d.regularMarketPrice, settings.priceDecimals)}` : '—'}</div>
+                  <div className="mono" style={{ fontWeight: 700 }}>{d ? `$${price(d.regularMarketPrice)}` : '—'}</div>
                   <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
                 </div>
                 <span style={{ color: 'var(--t4)', fontSize: 11 }}>{isExpanded ? '▲' : '▼'}</span>
@@ -126,13 +130,13 @@ export default function CryptoScreen() {
                 <div className="expand" style={{ borderLeftColor: col }}>
                   <SparklineChart symbol={ct.sym} range="7d" width={420} height={72} showLabels color={col} />
                   <div className="stat-grid">
-                    {d.regularMarketOpen != null && <div><div className="stat-lab">Open</div><div className="stat-val">{fmtPrice(d.regularMarketOpen)}</div></div>}
-                    {d.regularMarketDayHigh != null && <div><div className="stat-lab">24h high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{fmtPrice(d.regularMarketDayHigh)}</div></div>}
-                    {d.regularMarketDayLow != null && <div><div className="stat-lab">24h low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{fmtPrice(d.regularMarketDayLow)}</div></div>}
-                    <div><div className="stat-lab">Volume</div><div className="stat-val">{d.regularMarketVolume?.toLocaleString()}</div></div>
-                    {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{fmtPrice(d.fiftyTwoWeekHigh)}</div></div>}
-                    {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{fmtPrice(d.fiftyTwoWeekLow)}</div></div>}
-                    <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap, settings.compactNumbers)}</div></div>
+                    {d.regularMarketOpen != null && <div><div className="stat-lab">Open</div><div className="stat-val">{price(d.regularMarketOpen)}</div></div>}
+                    {d.regularMarketDayHigh != null && <div><div className="stat-lab">24h high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{price(d.regularMarketDayHigh)}</div></div>}
+                    {d.regularMarketDayLow != null && <div><div className="stat-lab">24h low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{price(d.regularMarketDayLow)}</div></div>}
+                    <div><div className="stat-lab">Volume</div><div className="stat-val">{vol(d.regularMarketVolume)}</div></div>
+                    {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{price(d.fiftyTwoWeekHigh)}</div></div>}
+                    {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{price(d.fiftyTwoWeekLow)}</div></div>}
+                    <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, ct.sym)}</div></div>
                   </div>
                   <button
                     type="button"

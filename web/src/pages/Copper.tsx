@@ -1,18 +1,20 @@
 import React, { useEffect } from 'react'
 import QuoteRow from '../components/QuoteRow'
 import { Section } from '../components/ui'
-import { fmt, fmtChg, useMarket } from '../context/MarketContext'
+import { fmtChg, useMarket } from '../context/MarketContext'
+import { useFormat } from '../hooks/useFormat'
 
 const ROWS = [
   { sym: 'HG=F', name: 'Copper', unit: 'USD/lb', decimals: 3 },
   { sym: 'ALI=F', name: 'Aluminum', unit: 'USD/MT', decimals: 2 },
-  { sym: 'NI=F', name: 'Nickel', unit: 'USD/MT', decimals: 0 },
+  { sym: 'NI=F', name: 'Nickel', unit: 'USD/MT', decimals: 2 },
   { sym: 'ZI=F', name: 'Zinc', unit: 'USD/MT', decimals: 2 },
   { sym: 'GC=F', name: 'Gold (safe haven)', unit: 'USD/oz', decimals: 2 },
 ]
 
 export default function CopperScreen() {
   const { data, ensureSymbols } = useMarket()
+  const { price } = useFormat()
   useEffect(() => { ensureSymbols(ROWS.map((r) => r.sym)) }, [ensureSymbols])
   const cu = data['HG=F']
   const al = data['ALI=F']
@@ -24,22 +26,22 @@ export default function CopperScreen() {
       <div className="kpi-row">
         <div className="kpi">
           <div className="kpi-label">Copper</div>
-          <div className="kpi-val">{cu ? `$${fmt(cu.regularMarketPrice, 3)}` : '—'}</div>
+          <div className="kpi-val">{cu ? `$${price(cu.regularMarketPrice, 3)}` : '—'}</div>
           {cu && <div className="kpi-chg">{fmtChg(cu.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">Aluminum</div>
-          <div className="kpi-val">{al ? `$${fmt(al.regularMarketPrice, 0)}` : '—'}</div>
+          <div className="kpi-val">{al ? `$${price(al.regularMarketPrice, 2)}` : '—'}</div>
           {al && <div className="kpi-chg">{fmtChg(al.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">Nickel</div>
-          <div className="kpi-val">{ni ? `$${fmt(ni.regularMarketPrice, 0)}` : '—'}</div>
+          <div className="kpi-val">{ni ? `$${price(ni.regularMarketPrice, 2)}` : '—'}</div>
           {ni && <div className="kpi-chg">{fmtChg(ni.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">Gold</div>
-          <div className="kpi-val">{au ? `$${fmt(au.regularMarketPrice, 0)}` : '—'}</div>
+          <div className="kpi-val">{au ? `$${price(au.regularMarketPrice, 2)}` : '—'}</div>
           {au && <div className="kpi-chg">{fmtChg(au.regularMarketChangePercent)}</div>}
         </div>
       </div>

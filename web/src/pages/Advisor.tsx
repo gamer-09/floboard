@@ -269,12 +269,13 @@ export default function AdvisorScreen() {
           const d = data[sym]
           const chg = d?.regularMarketChangePercent ?? 0
           const col = chg > 0 ? 'var(--gain)' : chg < 0 ? 'var(--loss)' : 'var(--amber)'
+          const exact = !settings.compactNumbers
           const price = d == null ? '—'
-            : kind === 'idx' ? fmtNum(d.regularMarketPrice, 0)
-            : kind === 'btc' ? `$${fmtNum(d.regularMarketPrice, 0)}`
+            : kind === 'idx' ? fmtNum(d.regularMarketPrice, exact ? 2 : 0)
+            : kind === 'btc' ? `$${fmtNum(d.regularMarketPrice, exact ? 2 : 0)}`
             : kind === 'yield' ? `${fmtNum(d.regularMarketPrice, 2)}%`
-            : kind === 'num' ? fmtNum(d.regularMarketPrice, 1)
-            : `$${fmtNum(d.regularMarketPrice, 0)}`
+            : kind === 'num' ? fmtNum(d.regularMarketPrice, exact ? 2 : 1)
+            : `$${fmtNum(d.regularMarketPrice, exact ? 2 : 0)}`
           return (
             <div key={sym} className="chat-ribbon-chip">
               <span className="chat-ribbon-lab">{label}</span>

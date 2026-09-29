@@ -24,6 +24,7 @@ const SECTIONS: HelpSection[] = [
       { q: 'What does Overview show?', a: 'Live prices for global indices, commodities, Treasury yields, sector ETFs, large-cap stocks, and FX — plus open/closed hours for 33 exchanges.' },
       { q: 'What are Rates, Energy, Credit, and Copper?', a: 'Separate Macro tabs. Rates is the Treasury curve and 10Y–3M spread. Energy is WTI, Brent, and gas. Credit is HYG/LQD junk vs investment-grade. Copper is industrial metals.' },
       { q: 'Where does market data come from?', a: 'Prices, charts, news, and search all come from Yahoo Finance — plus the in-app lists built from those same symbols. If a name is not on Yahoo, it cannot be searched, added, or shown in FloBoard.' },
+      { q: 'What does Compact numbers do?', a: 'On (default) shortens large figures, e.g. $4.82T. Off shows the full live value in every tab — market cap, volume, portfolio, earnings revenue, index levels. Rounded placeholder zeros are never shown as if they were exact.' },
       { q: 'How current is the data?', a: 'Quotes refresh automatically. Change the interval in Settings (30s, 60s, 90s, or 5 min).' },
       { q: 'What do the colors mean?', a: 'Green is up on the day. Red is down. Amber is flat or nearly unchanged.' },
     ],

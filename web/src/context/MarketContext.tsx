@@ -3,9 +3,8 @@ import { ALL_SYMBOLS, BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, MACRO, SECTOR
 import { useSettings } from './SettingsContext'
 import { getApiBase, resolveApiBase } from '../utils/apiBase'
 import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap } from '../utils/symbolFallbacks'
-import { fmt, fmtChg, fmtMcap, chgDir, fmtPrice } from '../utils/format'
 
-export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice }
+export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice, fmtMoney, fmtVol, fmtIndex } from '../utils/format'
 
 export interface QuoteData {
   symbol: string
@@ -117,15 +116,14 @@ function readUserSymbols(): string[] {
   return [...new Set(out.map((s) => s.trim().toUpperCase()).filter(Boolean))]
 }
 
-function wantsEquityMcap(sym: string) {
+function wantsMcap(sym: string) {
   const s = sym.toUpperCase()
   if (s.includes('=X') || s.includes('/') || s.startsWith('^') || s.includes('=F')) return false
-  if (s.endsWith('-USD')) return false
   return true
 }
 
 async function fetchMcapMap(symbols: string[]): Promise<Record<string, number>> {
-  const need = [...new Set(symbols.filter(wantsEquityMcap))]
+  const need = [...new Set(symbols.filter(wantsMcap))]
   if (!need.length) return {}
   try {
     const res = await fetchWithTimeout(
@@ -227,7 +225,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       12000,
     )
     if (!res.ok) return null
-    const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string }
+    const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
     const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
     if (prices.length < 2) return null
     const last = prices[prices.length - 1]
@@ -261,7 +259,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       regularMarketPreviousClose: prev,
       regularMarketDayHigh: Math.max(...window),
       regularMarketDayLow: Math.min(...window),
-      regularMarketVolume: 0,
+      regularMarketVolume: typeof json.volume === 'number' && json.volume > 0 && json.volume !== 1_000_000 ? json.volume : 0,
       marketCap: mcap,
     }
   } catch {
@@ -394,7 +392,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       setRefreshKey((k) => k + 1)
       if (retryRef.current) { clearTimeout(retryRef.current); retryRef.current = null }
 
-      const missingMcap = Object.values(map).filter((q) => wantsEquityMcap(q.symbol) && isFallbackMcap(q.symbol, q.marketCap)).map((q) => q.symbol)
+      const missingMcap = Object.values(map).filter((q) => wantsMcap(q.symbol) && isFallbackMcap(q.symbol, q.marketCap)).map((q) => q.symbol)
       if (missingMcap.length) {
         void fetchMcapMap(missingMcap).then((caps) => {
           const patch: QuoteData[] = []

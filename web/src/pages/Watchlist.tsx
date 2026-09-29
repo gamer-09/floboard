@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { EmptyState, SearchBox, Segmented } from '../components/ui'
 import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, fmtMcap, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
+import { chgDir, fmt, fmtChg, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
+import { useFormat } from '../hooks/useFormat'
 import { getApiBase } from '../utils/apiBase'
 import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
 
@@ -91,6 +92,7 @@ function decimals(sym: string) {
 export default function WatchlistScreen() {
   const navigate = useNavigate()
   const { settings } = useSettings()
+  const { mcap, price } = useFormat()
   const { data, ensureSymbols } = useMarket()
   const [tab, setTab] = useState<TabId>(() => {
     try {
@@ -306,7 +308,7 @@ export default function WatchlistScreen() {
                   <div className="right">
                     {live ? (
                       <>
-                        <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${fmt(d!.regularMarketPrice, dec)}`}</div>
+                        <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${price(d!.regularMarketPrice, dec)}`}</div>
                         <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{fmtChg(chg)}</div>
                       </>
                     ) : (
@@ -327,7 +329,7 @@ export default function WatchlistScreen() {
                           {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{fmt(d.regularMarketDayHigh, dec)}</div></div>}
                           {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{fmt(d.regularMarketDayLow, dec)}</div></div>}
                           {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
-                          {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap, settings.compactNumbers)}</div></div> : null}
+                          {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, sym)}</div></div> : null}
                         </div>
                       </>
                     ) : (
