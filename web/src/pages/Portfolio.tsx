@@ -48,6 +48,12 @@ export default function PortfolioScreen() {
   const [lookingUp, setLookingUp] = useState(false)
 
   useEffect(() => {
+    if (!lookupError) return
+    const t = setTimeout(() => setLookupError(''), 4000)
+    return () => clearTimeout(t)
+  }, [lookupError])
+
+  useEffect(() => {
     if (settings.clearPortfolioKey > 0) {
       setHoldings([])
       saveHoldings([])
@@ -170,12 +176,17 @@ export default function PortfolioScreen() {
 
       {showAdd && (
         <div className="panel form-card">
-          <input className="field" value={sym} onChange={(e) => setSym(e.target.value.toUpperCase())} placeholder="Yahoo Finance symbol (e.g. AAPL, BTC-USD)" />
+          <input className="field" value={sym} onChange={(e) => { setSym(e.target.value.toUpperCase()); setLookupError('') }} placeholder="Yahoo Finance symbol (e.g. AAPL, BTC-USD)" />
           <div style={{ display: 'flex', gap: 8 }}>
             <input className="field" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="Shares / units" type="number" />
             <input className="field" value={avgPrice} onChange={(e) => setAvgPrice(e.target.value)} placeholder="Average price" type="number" />
           </div>
-          {lookupError && <div className="lookup-err">{lookupError}</div>}
+          {lookupError && (
+            <div className="lookup-err">
+              <span>{lookupError}</span>
+              <button type="button" className="lookup-err-x" onClick={() => setLookupError('')} aria-label="Dismiss">×</button>
+            </div>
+          )}
           <button className="btn btn-primary" onClick={addHolding} disabled={lookingUp}>{lookingUp ? 'Checking ticker…' : 'Save holding'}</button>
         </div>
       )}

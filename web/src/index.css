@@ -973,6 +973,9 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
 .disclaimer strong { color: var(--amber); }
 
 .lookup-err {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   color: var(--loss);
   font-size: 13px;
   line-height: 1.45;
@@ -981,6 +984,19 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   background: var(--loss-dim);
   border: 1px solid color-mix(in srgb, var(--loss) 35%, transparent);
 }
+.lookup-err span { flex: 1; }
+.lookup-err-x {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--loss);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+.lookup-err-x:hover { opacity: 1; }
 
 .backdrop {
   position: fixed; inset: 0;

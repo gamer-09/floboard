@@ -137,6 +137,16 @@ export default function WatchlistScreen() {
   }, [symbols, ensureSymbols])
 
   useEffect(() => {
+    setLookupError('')
+  }, [search])
+
+  useEffect(() => {
+    if (!lookupError) return
+    const t = setTimeout(() => setLookupError(''), 4000)
+    return () => clearTimeout(t)
+  }, [lookupError])
+
+  useEffect(() => {
     const q = search.trim()
     if (q.length < 1) {
       setRemote([])
@@ -247,7 +257,12 @@ export default function WatchlistScreen() {
       {searching && (
         <div className="panel form-card" style={{ marginBottom: 16 }}>
           {lookingUp && <div className="muted">Checking Yahoo Finance…</div>}
-          {lookupError && <div className="lookup-err">{lookupError}</div>}
+          {lookupError && (
+            <div className="lookup-err">
+              <span>{lookupError}</span>
+              <button type="button" className="lookup-err-x" onClick={() => setLookupError('')} aria-label="Dismiss">×</button>
+            </div>
+          )}
           {!lookingUp && searchResults.length === 0 && !lookupError && (
             <div className="muted">No match in the app or on Yahoo Finance. If it isn’t listed there, it cannot be added or shown.</div>
           )}
@@ -268,7 +283,6 @@ export default function WatchlistScreen() {
           )}
         </div>
       )}
-      {!searching && lookupError && <div className="lookup-err" style={{ marginBottom: 12 }}>{lookupError}</div>}
 
       {!searching && sorted.length === 0 && (
         <EmptyState
