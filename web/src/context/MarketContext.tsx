@@ -394,11 +394,13 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     if (!missing.length) return
     void (async () => {
       const { results } = await fetchBatch(missing)
-      applyQuotes(results)
-      const synthetic = results.filter(isSyntheticQuote)
+      const known = new Set(ALL_SYMBOLS)
+      const usable = results.filter((q) => !isSyntheticQuote(q) || known.has(q.symbol))
+      applyQuotes(usable)
+      const synthetic = usable.filter(isSyntheticQuote)
       if (synthetic.length) {
         const hydrated = await hydrateQuotes(synthetic, 4)
-        applyQuotes(hydrated.results)
+        applyQuotes(hydrated.results.filter((q) => !isSyntheticQuote(q) || known.has(q.symbol)))
         if (hydrated.live) setIsOnline(true)
       }
     })()

@@ -49,7 +49,7 @@ const SECTIONS: HelpSection[] = [
       { q: 'Does Portfolio connect to a bank?', a: 'No. It is 100% simulated tracking. You type symbols, units, and cost basis yourself. There is no deposit flow and no brokerage login.' },
       { q: 'Is my data private?', a: 'Yes. Watchlist and holdings live in this browser only.' },
       { q: 'What does Clear Favorites do?', a: 'Settings → Clear Favorites empties only your custom watchlist. Preset market lists are never deleted.' },
-      { q: 'What are the Watchlist tabs?', a: '★ Favorites is yours. Tech & AI, Crypto, and FX & Metals are built-in lists. You can add or remove symbols on any tab.' },
+      { q: 'What are the Watchlist tabs?', a: '★ Favorites is yours. Tech & AI, Crypto, and FX & Metals are built-in lists. You can add or remove symbols on any tab. A ticker is only added if Yahoo Finance lists it — unknown names are not stored with a fake price.' },
       { q: 'How do I add a holding?', a: 'Portfolio → + Add holding. Enter a ticker, quantity, and average price. It is simulated tracking only.' },
       { q: 'What is asset allocation?', a: 'When you have holdings, Portfolio shows a stocks / crypto / other split. Percentages are of simulated value, not a real account.' },
     ],

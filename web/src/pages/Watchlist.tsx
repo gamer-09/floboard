@@ -2,10 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { EmptyState, SearchBox, Segmented } from '../components/ui'
-import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, fmtMcap, useMarket } from '../context/MarketContext'
+import { ALL_SYMBOLS, COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
+import { chgDir, fmt, fmtChg, fmtMcap, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { getApiBase } from '../utils/apiBase'
+import { verifySymbol } from '../utils/lookup'
+
+const KNOWN = new Set(ALL_SYMBOLS)
+
+function hasLiveQuote(sym: string, d: QuoteData | undefined) {
+  if (!d) return false
+  if (KNOWN.has(sym)) return true
+  return !isSyntheticQuote(d)
+}
 
 const FAV_KEY = 'floboard:watchlist'
 
@@ -97,6 +106,8 @@ export default function WatchlistScreen() {
   const [search, setSearch] = useState('')
   const [remote, setRemote] = useState<{ sym: string; name: string }[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [lookupError, setLookupError] = useState('')
+  const [lookingUp, setLookingUp] = useState(false)
 
   useEffect(() => {
     const def = TABS.find((t) => t.id === tab) ?? TABS[0]
@@ -108,6 +119,7 @@ export default function WatchlistScreen() {
     setSymbols(loadTab(def))
     setSearch('')
     setExpanded(null)
+    setLookupError('')
   }, [tab, settings.clearWatchlistKey])
 
   useEffect(() => {
@@ -142,16 +154,36 @@ export default function WatchlistScreen() {
     saveTab(tab, next)
   }
 
-  const addSymbol = (sym: string) => {
-    const clean = sym.trim().toUpperCase()
-    if (!clean || symbols.includes(clean)) {
+  const addVerified = (sym: string, name?: string) => {
+    if (!sym || symbols.includes(sym) || symbols.includes(sym.toUpperCase())) {
       setSearch('')
+      setLookupError('')
       return
     }
-    persist([clean, ...symbols])
-    ensureSymbols([clean])
+    if (name) NAMES[sym] = name
+    persist([sym, ...symbols])
+    ensureSymbols([sym])
     setSearch('')
     setRemote([])
+    setLookupError('')
+  }
+
+  const addSymbol = async (sym: string, alreadyVerified = false) => {
+    const typed = sym.trim()
+    if (!typed) return
+    if (alreadyVerified) {
+      addVerified(typed)
+      return
+    }
+    setLookingUp(true)
+    setLookupError('')
+    const result = await verifySymbol(typed)
+    setLookingUp(false)
+    if (!result.ok) {
+      setLookupError(result.error)
+      return
+    }
+    addVerified(result.sym, result.name)
   }
 
   const removeSymbol = (sym: string) => {
@@ -204,24 +236,29 @@ export default function WatchlistScreen() {
 
       {searching && (
         <div className="panel form-card" style={{ marginBottom: 16 }}>
-          {searchResults.length === 0 && <div className="muted">No matches. You can still add the ticker as typed.</div>}
+          {lookingUp && <div className="muted">Checking Yahoo Finance…</div>}
+          {lookupError && <div className="lookup-err">{lookupError}</div>}
+          {!lookingUp && searchResults.length === 0 && !lookupError && (
+            <div className="muted">No Yahoo Finance match. If it isn’t listed there, it will not be added.</div>
+          )}
           {searchResults.map((cat) => (
             <button
               key={cat.sym}
               type="button"
-              onClick={() => addSymbol(cat.sym)}
+              onClick={() => addSymbol(cat.sym, true)}
               style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', color: 'var(--t1)', textAlign: 'left', borderBottom: '1px solid var(--rim)' }}
             >
               <strong>{cat.sym}</strong> <span className="muted">· {cat.name}</span>
             </button>
           ))}
           {search.trim() && !symbols.includes(search.trim().toUpperCase()) && (
-            <button className="btn btn-primary" onClick={() => addSymbol(search)} type="button">
-              Add “{search.trim().toUpperCase()}”
+            <button className="btn btn-primary" onClick={() => addSymbol(search)} type="button" disabled={lookingUp}>
+              {lookingUp ? 'Checking…' : `Look up “${search.trim().toUpperCase()}”`}
             </button>
           )}
         </div>
       )}
+      {!searching && lookupError && <div className="lookup-err" style={{ marginBottom: 12 }}>{lookupError}</div>}
 
       {!searching && sorted.length === 0 && (
         <EmptyState
@@ -235,8 +272,9 @@ export default function WatchlistScreen() {
         <div className="asset-list">
           {sorted.map(({ sym, name }) => {
             const d = data[sym]
-            const chg = d?.regularMarketChangePercent ?? 0
-            const dir = chgDir(chg)
+            const live = hasLiveQuote(sym, d)
+            const chg = live ? (d?.regularMarketChangePercent ?? 0) : 0
+            const dir = live ? chgDir(chg) : 'flat'
             const col = dir === 'up' ? 'var(--gain)' : dir === 'dn' ? 'var(--loss)' : 'var(--t2)'
             const dec = decimals(sym)
             const prefix = isFx(sym) || sym.startsWith('^') ? '' : '$'
@@ -254,25 +292,40 @@ export default function WatchlistScreen() {
                     <div className="muted">{name}</div>
                   </div>
                   <div className="spark">
-                    <SparklineChart symbol={sym} range="7d" width={80} height={32} color={col} />
+                    {live ? <SparklineChart symbol={sym} range="7d" width={80} height={32} color={col} /> : null}
                   </div>
                   <div className="right">
-                    <div className="mono" style={{ fontWeight: 700 }}>{d ? `${prefix}${fmt(d.regularMarketPrice, dec)}` : '—'}</div>
-                    <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
+                    {live ? (
+                      <>
+                        <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${fmt(d!.regularMarketPrice, dec)}`}</div>
+                        <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{fmtChg(chg)}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mono" style={{ fontWeight: 700, color: 'var(--t3)' }}>N/A</div>
+                        <div className="muted">Not on Yahoo</div>
+                      </>
+                    )}
                   </div>
                   <span style={{ color: 'var(--t4)', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
                 </div>
                 {open && (
                   <div className="expand" style={{ borderLeftColor: col }}>
-                    <SparklineChart symbol={sym} range="7d" width={420} height={72} showLabels color={col} />
-                    <div className="stat-grid">
-                      {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{fmt(d.regularMarketDayHigh, dec)}</div></div>}
-                      {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{fmt(d.regularMarketDayLow, dec)}</div></div>}
-                      {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
-                      {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap)}</div></div> : null}
-                    </div>
+                    {live ? (
+                      <>
+                        <SparklineChart symbol={sym} range="7d" width={420} height={72} showLabels color={col} />
+                        <div className="stat-grid">
+                          {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{fmt(d.regularMarketDayHigh, dec)}</div></div>}
+                          {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{fmt(d.regularMarketDayLow, dec)}</div></div>}
+                          {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
+                          {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{fmtMcap(d.marketCap)}</div></div> : null}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="muted" style={{ whiteSpace: 'normal' }}>This ticker is not on Yahoo Finance, so there is no live quote. Remove it from the list.</p>
+                    )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); openAi(sym, name) }}>Ask FloAI</button>
+                      {live && <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); openAi(sym, name) }}>Ask FloAI</button>}
                       <button type="button" className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); removeSymbol(sym) }}>Remove</button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import { EmptyState } from '../components/ui'
 import { CRYPTOS, STOCKS } from '../constants/marketData'
 import { fmt, fmtChg, fmtMcap, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
+import { verifySymbol } from '../utils/lookup'
 
 interface Holding { id: string; symbol: string; shares: number; avgPrice: number }
 
@@ -35,6 +36,8 @@ export default function PortfolioScreen() {
   const [sym, setSym] = useState('')
   const [shares, setShares] = useState('')
   const [avgPrice, setAvgPrice] = useState('')
+  const [lookupError, setLookupError] = useState('')
+  const [lookingUp, setLookingUp] = useState(false)
 
   useEffect(() => {
     if (settings.clearPortfolioKey > 0) {
@@ -48,12 +51,20 @@ export default function PortfolioScreen() {
     if (syms.length) ensureSymbols(syms)
   }, [holdings, ensureSymbols])
 
-  const addHolding = () => {
+  const addHolding = async () => {
     if (!sym.trim() || !shares || !avgPrice) return
-    const symbol = sym.trim().toUpperCase()
     const qty = parseFloat(shares)
     const px = parseFloat(avgPrice)
     if (!Number.isFinite(qty) || !Number.isFinite(px) || qty <= 0 || px < 0) return
+    setLookingUp(true)
+    setLookupError('')
+    const result = await verifySymbol(sym)
+    setLookingUp(false)
+    if (!result.ok) {
+      setLookupError(result.error)
+      return
+    }
+    const symbol = result.sym
     const existing = holdings.findIndex((h) => h.symbol === symbol)
     let next: Holding[]
     if (existing >= 0) {
@@ -65,6 +76,7 @@ export default function PortfolioScreen() {
     saveHoldings(next)
     ensureSymbols([symbol])
     setSym(''); setShares(''); setAvgPrice('')
+    setLookupError('')
     setShowAdd(false)
   }
 
@@ -137,7 +149,8 @@ export default function PortfolioScreen() {
             <input className="field" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="Shares / units" type="number" />
             <input className="field" value={avgPrice} onChange={(e) => setAvgPrice(e.target.value)} placeholder="Average price" type="number" />
           </div>
-          <button className="btn btn-primary" onClick={addHolding}>Save holding</button>
+          {lookupError && <div className="lookup-err">{lookupError}</div>}
+          <button className="btn btn-primary" onClick={addHolding} disabled={lookingUp}>{lookingUp ? 'Checking ticker…' : 'Save holding'}</button>
         </div>
       )}
 
