@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react'
 import SparklineChart from '../components/SparklineChart'
 import { DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
 import { FOREX } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, useMarket } from '../context/MarketContext'
+import { chgDir, fmtChg, useMarket } from '../context/MarketContext'
+import { useFormat } from '../hooks/useFormat'
 
 type Group = 'All' | 'Majors' | 'Minors' | 'Exotics' | 'Commodity' | 'Metals' | 'Index'
 
@@ -71,6 +72,7 @@ function decimals(sym: string): number {
 
 export default function CurrencyPairsScreen() {
   const { data } = useMarket()
+  const { price } = useFormat()
   const [group, setGroup] = useState<Group>('All')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'pair' | 'chgPct'>('pair')
@@ -162,7 +164,7 @@ export default function CurrencyPairsScreen() {
                   <SparklineChart symbol={p.sym} range="7d" width={80} height={28} color={col} />
                 </div>
                 <div className="right">
-                  <div className="mono" style={{ fontWeight: 700, fontSize: 15 }}>{d ? fmt(d.regularMarketPrice, dec) : '—'}</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: 15 }}>{d ? price(d.regularMarketPrice, dec) : '—'}</div>
                   <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
                 </div>
               </div>
@@ -170,12 +172,12 @@ export default function CurrencyPairsScreen() {
                 <div className="expand" style={{ borderLeftColor: col }}>
                   <SparklineChart symbol={p.sym} range="7d" width={420} height={72} showLabels color={col} />
                   <div className="stat-grid">
-                    {d.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{fmt(d.regularMarketDayHigh, dec)}</div></div>}
-                    {d.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{fmt(d.regularMarketDayLow, dec)}</div></div>}
-                    {d.regularMarketOpen != null && <div><div className="stat-lab">Open</div><div className="stat-val">{fmt(d.regularMarketOpen, dec)}</div></div>}
-                    {d.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
-                    {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{fmt(d.fiftyTwoWeekHigh, dec)}</div></div>}
-                    {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{fmt(d.fiftyTwoWeekLow, dec)}</div></div>}
+                    {d.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{price(d.regularMarketDayHigh, dec)}</div></div>}
+                    {d.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{price(d.regularMarketDayLow, dec)}</div></div>}
+                    {d.regularMarketOpen != null && <div><div className="stat-lab">Open</div><div className="stat-val">{price(d.regularMarketOpen, dec)}</div></div>}
+                    {d.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{price(d.regularMarketPreviousClose, dec)}</div></div>}
+                    {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{price(d.fiftyTwoWeekHigh, dec)}</div></div>}
+                    {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{price(d.fiftyTwoWeekLow, dec)}</div></div>}
                   </div>
                 </div>
               )}

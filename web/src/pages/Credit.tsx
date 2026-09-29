@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react'
 import QuoteRow from '../components/QuoteRow'
 import { Section } from '../components/ui'
-import { fmt, fmtChg, useMarket } from '../context/MarketContext'
+import { fmtChg, useMarket } from '../context/MarketContext'
+import { useFormat } from '../hooks/useFormat'
 
 const ROWS = [
   { sym: 'HYG', name: 'High-yield corporate', unit: 'HYG', decimals: 2 },
@@ -12,6 +13,7 @@ const ROWS = [
 
 export default function CreditScreen() {
   const { data, ensureSymbols } = useMarket()
+  const { price } = useFormat()
   useEffect(() => { ensureSymbols(ROWS.map((r) => r.sym)) }, [ensureSymbols])
   const hyg = data['HYG']
   const lqd = data['LQD']
@@ -24,22 +26,22 @@ export default function CreditScreen() {
       <div className="kpi-row">
         <div className="kpi">
           <div className="kpi-label">HYG</div>
-          <div className="kpi-val">{hyg ? `$${fmt(hyg.regularMarketPrice, 2)}` : '—'}</div>
+          <div className="kpi-val">{hyg && !Number.isNaN(hyg.regularMarketPrice) ? `$${price(hyg.regularMarketPrice, 2)}` : '—'}</div>
           {hyg && <div className="kpi-chg">{fmtChg(hyg.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">LQD</div>
-          <div className="kpi-val">{lqd ? `$${fmt(lqd.regularMarketPrice, 2)}` : '—'}</div>
+          <div className="kpi-val">{lqd ? `$${price(lqd.regularMarketPrice, 2)}` : '—'}</div>
           {lqd && <div className="kpi-chg">{fmtChg(lqd.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">TLT</div>
-          <div className="kpi-val">{tlt ? `$${fmt(tlt.regularMarketPrice, 2)}` : '—'}</div>
+          <div className="kpi-val">{tlt ? `$${price(tlt.regularMarketPrice, 2)}` : '—'}</div>
           {tlt && <div className="kpi-chg">{fmtChg(tlt.regularMarketChangePercent)}</div>}
         </div>
         <div className="kpi">
           <div className="kpi-label">TIP</div>
-          <div className="kpi-val">{tip ? `$${fmt(tip.regularMarketPrice, 2)}` : '—'}</div>
+          <div className="kpi-val">{tip ? `$${price(tip.regularMarketPrice, 2)}` : '—'}</div>
           {tip && <div className="kpi-chg">{fmtChg(tip.regularMarketChangePercent)}</div>}
         </div>
       </div>

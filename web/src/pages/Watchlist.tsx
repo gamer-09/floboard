@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { EmptyState, SearchBox, Segmented } from '../components/ui'
 import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
+import { chgDir, fmtChg, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { useFormat } from '../hooks/useFormat'
 import { getApiBase } from '../utils/apiBase'
 import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
 
-function hasLiveQuote(sym: string, d: QuoteData | undefined) {
+function hasLiveQuote(_sym: string, d: QuoteData | undefined) {
   if (!d) return false
-  if (isKnownSymbol(sym)) return true
   return !isSyntheticQuote(d)
 }
 
@@ -326,9 +325,9 @@ export default function WatchlistScreen() {
                       <>
                         <SparklineChart symbol={sym} range="7d" width={420} height={72} showLabels color={col} />
                         <div className="stat-grid">
-                          {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{fmt(d.regularMarketDayHigh, dec)}</div></div>}
-                          {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{fmt(d.regularMarketDayLow, dec)}</div></div>}
-                          {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{fmt(d.regularMarketPreviousClose, dec)}</div></div>}
+                          {d?.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{price(d.regularMarketDayHigh, dec)}</div></div>}
+                          {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{price(d.regularMarketDayLow, dec)}</div></div>}
+                          {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{price(d.regularMarketPreviousClose, dec)}</div></div>}
                           {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, sym)}</div></div> : null}
                         </div>
                       </>

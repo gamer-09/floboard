@@ -5,7 +5,6 @@ import { ChangeBadge, Section, Segmented } from '../components/ui'
 import { EXCHANGES, getExchangeStatus } from '../constants/exchanges'
 import { BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, SECTORS, STOCKS } from '../constants/marketData'
 import { chgDir, fmt, fmtChg, useMarket } from '../context/MarketContext'
-import { useSettings } from '../context/SettingsContext'
 import { useColors } from '../hooks/useColors'
 import { useFormat } from '../hooks/useFormat'
 
@@ -103,8 +102,7 @@ function MarketHoursSection() {
 export default function MarketsScreen() {
   const c = useColors()
   const { data, lastUpdated } = useMarket()
-  const { settings } = useSettings()
-  const { mcap, compact } = useFormat()
+  const { mcap, compact, price } = useFormat()
   const [moverTab, setMoverTab] = useState('All')
 
   const universe = useMemo(() => {
@@ -293,7 +291,7 @@ export default function MarketsScreen() {
             return (
               <div key={co.sym} className="comm-card">
                 <div className="comm-label">{co.label}</div>
-                <div className="comm-price">{d ? `$${fmt(d.regularMarketPrice)}` : '—'}</div>
+                <div className="comm-price">{d ? `$${price(d.regularMarketPrice, 2)}` : '—'}</div>
                 <div className="comm-unit">{co.unit}</div>
                 {d && <ChangeBadge value={d.regularMarketChangePercent} />}
               </div>
@@ -324,7 +322,7 @@ export default function MarketsScreen() {
                       <div className="sym">{s.sym}</div>
                       <div className="muted">{s.name}</div>
                     </td>
-                    <td className="num">{d ? `$${fmt(d.regularMarketPrice, compact ? settings.priceDecimals : Math.max(settings.priceDecimals, 2))}` : '—'}</td>
+                    <td className="num">{d ? `$${price(d.regularMarketPrice)}` : '—'}</td>
                     <td className="num" style={{ color: dir === 'up' ? c.gain : dir === 'dn' ? c.loss : c.t2 }}>{d ? fmtChg(chg) : '—'}</td>
                     <td className="num" style={{ color: 'var(--t3)' }}>{d ? mcap(d.marketCap, s.sym) : '—'}</td>
                   </tr>

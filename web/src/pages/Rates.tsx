@@ -3,9 +3,11 @@ import QuoteRow from '../components/QuoteRow'
 import { Section } from '../components/ui'
 import { BONDS } from '../constants/marketData'
 import { chgDir, fmt, useMarket } from '../context/MarketContext'
+import { useFormat } from '../hooks/useFormat'
 
 export default function RatesScreen() {
   const { data, ensureSymbols } = useMarket()
+  const { price } = useFormat()
   useEffect(() => { ensureSymbols(['^IRX', '^TU', '^FVX', '^TNX', '^TYX', 'TLT', '^MOVE']) }, [ensureSymbols])
 
   const tnx = data['^TNX']
@@ -35,7 +37,7 @@ export default function RatesScreen() {
         </div>
         <div className="kpi">
           <div className="kpi-label">TLT</div>
-          <div className="kpi-val">{tlt ? `$${fmt(tlt.regularMarketPrice, 2)}` : '—'}</div>
+          <div className="kpi-val">{tlt ? `$${price(tlt.regularMarketPrice, 2)}` : '—'}</div>
         </div>
       </div>
 

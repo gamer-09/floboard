@@ -59,8 +59,6 @@ function apiBase() {
 const YF_CHART = 'https://query2.finance.yahoo.com/v8/finance/chart'
 const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
 
-const KNOWN_SET = new Set(ALL_SYMBOLS)
-
 const PRIORITY_SYMBOLS = [
   ...INDICES.map((i) => i.sym),
   ...STOCKS.map((s) => s.sym),
@@ -122,21 +120,57 @@ function wantsMcap(sym: string) {
   return true
 }
 
+function geckoTick(yahoo: string) {
+  return yahoo.trim().toUpperCase().replace(/-USD$/, '').replace(/\d+$/, '')
+}
+
+async function fetchGeckoMcaps(symbols: string[]): Promise<Record<string, number>> {
+  const crypto = [...new Set(symbols.filter((s) => s.toUpperCase().endsWith('-USD')))]
+  if (!crypto.length) return {}
+  try {
+    const res = await fetchWithTimeout(
+      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1',
+      {},
+      12000,
+    )
+    if (!res.ok) return {}
+    const rows = await res.json() as Array<{ symbol?: string; market_cap?: number }>
+    const byTick = new Map<string, number>()
+    for (const row of rows) {
+      const t = String(row.symbol || '').toUpperCase()
+      if (t && typeof row.market_cap === 'number' && row.market_cap > 0 && !byTick.has(t)) {
+        byTick.set(t, row.market_cap)
+      }
+    }
+    const out: Record<string, number> = {}
+    for (const s of crypto) {
+      const cap = byTick.get(geckoTick(s))
+      if (cap) out[s] = cap
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
 async function fetchMcapMap(symbols: string[]): Promise<Record<string, number>> {
   const need = [...new Set(symbols.filter(wantsMcap))]
   if (!need.length) return {}
+  const out: Record<string, number> = {}
   try {
     const res = await fetchWithTimeout(
       `${apiBase()}/api/market/mcap?symbols=${encodeURIComponent(need.join(','))}`,
       {},
       20000,
     )
-    if (!res.ok) return {}
-    const json = await res.json() as { results?: Record<string, number> }
-    return json.results ?? {}
-  } catch {
-    return {}
-  }
+    if (res.ok) {
+      const json = await res.json() as { results?: Record<string, number> }
+      Object.assign(out, json.results ?? {})
+    }
+  } catch { /* optional */ }
+  const still = need.filter((s) => !(typeof out[s] === 'number' && out[s] > 0))
+  if (still.length) Object.assign(out, await fetchGeckoMcaps(still))
+  return out
 }
 
 async function fetchViaProxy(symbols: string[]): Promise<QuoteData[] | null> {
@@ -303,8 +337,6 @@ async function fetchBatch(symbols: string[]): Promise<{ results: QuoteData[]; ha
     const existing = foundMap.get(sym)
     if (existing && existing.regularMarketPrice != null && isFinite(existing.regularMarketPrice)) {
       completeResults.push(existing)
-    } else {
-      completeResults.push(getFallbackQuote(sym))
     }
   }
 
@@ -344,9 +376,15 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       const map = { ...prev }
       quotes.forEach((q) => {
         if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
-        // Never store a fake fallback for a ticker that is not in the in-app catalog.
-        if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
-        map[q.symbol] = withExactMcap(q, prev[q.symbol])
+        const cur = prev[q.symbol]
+        if (isSyntheticQuote(q)) {
+          const mcap = !isFallbackMcap(q.symbol, q.marketCap) ? q.marketCap : 0
+          if (mcap && cur && !isSyntheticQuote(cur)) {
+            map[q.symbol] = { ...cur, marketCap: mcap }
+          }
+          return
+        }
+        map[q.symbol] = withExactMcap(q, cur)
       })
       return map
     })
@@ -376,12 +414,14 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       allResults.forEach((q) => {
         if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
         const old = prev[q.symbol]
-        if (isSyntheticQuote(q) && old && !isSyntheticQuote(old)) return
-        if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
+        if (isSyntheticQuote(q)) {
+          const mcap = !isFallbackMcap(q.symbol, q.marketCap) ? q.marketCap : 0
+          if (old && !isSyntheticQuote(old)) {
+            map[q.symbol] = mcap ? { ...old, marketCap: mcap } : old
+          }
+          return
+        }
         map[q.symbol] = withExactMcap(q, old)
-      })
-      symbols.forEach((s) => {
-        if (!map[s] && KNOWN_SET.has(s)) map[s] = getFallbackQuote(s)
       })
 
       setData(map)
@@ -404,39 +444,20 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         })
       }
 
-      const priority = new Set([...PRIORITY_SYMBOLS, ...extra])
-      const needHydrate: QuoteData[] = []
-      const seen = new Set<string>()
-      for (const q of Object.values(map)) {
-        if (isSyntheticQuote(q) && priority.has(q.symbol)) {
-          needHydrate.push(q)
-          seen.add(q.symbol)
-        }
-      }
-      for (const s of extra) {
-        if (seen.has(s)) continue
-        if (!map[s] || isSyntheticQuote(map[s])) {
-          needHydrate.push(map[s] || getFallbackQuote(s))
-          seen.add(s)
-        }
-      }
+      const priority = [...new Set([...PRIORITY_SYMBOLS, ...extra, ...ALL_SYMBOLS])]
+      const needHydrate = priority
+        .filter((s) => !map[s] || isSyntheticQuote(map[s]))
+        .map((s) => map[s] || getFallbackQuote(s))
       if (needHydrate.length) {
         void hydrateQuotes(needHydrate, 6).then((hydrated) => {
           if (!hydrated.live) return
-          applyQuotes(hydrated.results)
+          applyQuotes(hydrated.results.filter((q) => q && !isSyntheticQuote(q)))
           setIsOnline(true)
           setLastUpdated(new Date())
         })
       }
     } catch {
-      setData((prev) => {
-        if (Object.keys(prev).length === 0) {
-          const fallbackMap: Record<string, QuoteData> = {}
-          ALL_SYMBOLS.forEach((s) => { fallbackMap[s] = getFallbackQuote(s) })
-          return fallbackMap
-        }
-        return prev
-      })
+      setData((prev) => prev)
       setIsOnline(false)
       setLastUpdated(new Date())
       scheduleRetry(() => { loadData() })

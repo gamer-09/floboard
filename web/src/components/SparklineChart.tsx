@@ -2,19 +2,22 @@ import React, { useEffect, useState } from 'react'
 import { useColors } from '../hooks/useColors'
 import { useMarket } from '../context/MarketContext'
 import { getApiBase } from '../utils/apiBase'
-import { getFallbackQuote, generateRealisticChart, type PricePoint } from '../utils/symbolFallbacks'
+import { getFallbackQuote, type PricePoint } from '../utils/symbolFallbacks'
 
 async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]> {
   try {
     const res = await fetch(`${getApiBase()}/api/market/history?symbol=${encodeURIComponent(symbol)}&range=${range}`)
-    if (res.ok) {
-      const json = await res.json() as { prices?: PricePoint[] }
-      const prices = json.prices ?? []
-      if (prices.length >= 2) return prices
-    }
-  } catch { /* use fallback */ }
-  const basePrice = getFallbackQuote(symbol).regularMarketPrice || 100
-  return generateRealisticChart(symbol, range, basePrice)
+    if (!res.ok) return []
+    const json = await res.json() as { prices?: PricePoint[] }
+    const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
+    if (prices.length < 2) return []
+    const fallback = getFallbackQuote(symbol)
+    const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
+    if (syntheticLen && Math.abs(prices[prices.length - 1].c - fallback.regularMarketPrice) < 1e-6) return []
+    return prices
+  } catch {
+    return []
+  }
 }
 
 function buildPath(points: PricePoint[], width: number, height: number, pad = 3) {
