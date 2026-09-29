@@ -1,6 +1,7 @@
 import YahooFinance from "yahoo-finance2";
 import { Router } from "express";
 import { fetchLiveQuotes } from "../lib/yahooQuotes";
+import { attachNasdaqMcaps, fetchNasdaqMcaps } from "../lib/nasdaqMcap";
 
 const router = Router();
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -319,12 +320,29 @@ router.get("/market", async (req, res) => {
       }
     }
 
-    res.json({ results });
+    const withCaps = await attachNasdaqMcaps(results as Array<{ symbol: string; marketCap?: number }>);
+    res.json({ results: withCaps });
   } catch (err) {
     req.log?.debug({ err }, "Using fallback quotes");
     const fallbackResults = symbols.map((s) => getFallbackQuote(s));
-    res.json({ results: fallbackResults });
+    const withCaps = await attachNasdaqMcaps(fallbackResults as Array<{ symbol: string; marketCap?: number }>);
+    res.json({ results: withCaps });
   }
+});
+
+router.get("/market/mcap", async (req, res) => {
+  const raw = req.query.symbols;
+  if (!raw || typeof raw !== "string") {
+    res.status(400).json({ error: "symbols query param required" });
+    return;
+  }
+  const symbols = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 80);
+  const map = await fetchNasdaqMcaps(symbols);
+  res.json({ results: Object.fromEntries(map) });
 });
 
 function intHash(seed: number): number {
@@ -467,6 +485,14 @@ router.get("/market/history", async (req, res) => {
       }
     } catch {
       /* quote crumb is optional for history */
+    }
+    if (!marketCap) {
+      try {
+        const caps = await fetchNasdaqMcaps([sym]);
+        marketCap = caps.get(sym) || 0;
+      } catch {
+        /* nasdaq is optional */
+      }
     }
 
     const payload = { symbol: sym, range, prices, marketCap, shortName };

@@ -117,6 +117,30 @@ function readUserSymbols(): string[] {
   return [...new Set(out.map((s) => s.trim().toUpperCase()).filter(Boolean))]
 }
 
+function wantsEquityMcap(sym: string) {
+  const s = sym.toUpperCase()
+  if (s.includes('=X') || s.includes('/') || s.startsWith('^') || s.includes('=F')) return false
+  if (s.endsWith('-USD')) return false
+  return true
+}
+
+async function fetchMcapMap(symbols: string[]): Promise<Record<string, number>> {
+  const need = [...new Set(symbols.filter(wantsEquityMcap))]
+  if (!need.length) return {}
+  try {
+    const res = await fetchWithTimeout(
+      `${apiBase()}/api/market/mcap?symbols=${encodeURIComponent(need.join(','))}`,
+      {},
+      20000,
+    )
+    if (!res.ok) return {}
+    const json = await res.json() as { results?: Record<string, number> }
+    return json.results ?? {}
+  } catch {
+    return {}
+  }
+}
+
 async function fetchViaProxy(symbols: string[]): Promise<QuoteData[] | null> {
   try {
     const res = await fetchWithTimeout(
@@ -369,6 +393,18 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       setServerError(null)
       setRefreshKey((k) => k + 1)
       if (retryRef.current) { clearTimeout(retryRef.current); retryRef.current = null }
+
+      const missingMcap = Object.values(map).filter((q) => wantsEquityMcap(q.symbol) && isFallbackMcap(q.symbol, q.marketCap)).map((q) => q.symbol)
+      if (missingMcap.length) {
+        void fetchMcapMap(missingMcap).then((caps) => {
+          const patch: QuoteData[] = []
+          for (const [sym, mcap] of Object.entries(caps)) {
+            const prev = dataRef.current[sym]
+            if (prev && typeof mcap === 'number' && mcap > 0) patch.push({ ...prev, marketCap: mcap })
+          }
+          if (patch.length) applyQuotes(patch)
+        })
+      }
 
       const priority = new Set([...PRIORITY_SYMBOLS, ...extra])
       const needHydrate: QuoteData[] = []
