@@ -131,7 +131,13 @@ export default function CurrencyPairsScreen() {
         </div>
       )}
 
-      {filtered.length === 0 && <div className="muted" style={{ padding: 20 }}>No pairs match that filter.</div>}
+      {filtered.length === 0 && (
+        <div className="muted" style={{ padding: 20 }}>
+          {search.trim()
+            ? 'No match. This tab only lists pairs Yahoo Finance covers.'
+            : 'No pairs match that filter.'}
+        </div>
+      )}
 
       <div className="asset-list">
         {filtered.map((p) => {

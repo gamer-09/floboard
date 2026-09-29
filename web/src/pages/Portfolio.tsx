@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { EmptyState } from '../components/ui'
 import { CRYPTOS, STOCKS } from '../constants/marketData'
-import { fmt, fmtChg, fmtMcap, useMarket } from '../context/MarketContext'
+import { fmt, fmtChg, fmtMcap, isSyntheticQuote, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
-import { verifySymbol } from '../utils/lookup'
+import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
 
 interface Holding { id: string; symbol: string; shares: number; avgPrice: number }
 
@@ -28,6 +28,12 @@ function nameOf(sym: string) {
     ?? sym
 }
 
+function markPrice(sym: string, quote: { regularMarketPrice: number } | undefined, avg: number, synthetic: boolean) {
+  if (!quote) return avg
+  if (isKnownSymbol(sym) || !synthetic) return quote.regularMarketPrice
+  return avg
+}
+
 export default function PortfolioScreen() {
   const { data, ensureSymbols } = useMarket()
   const { settings } = useSettings()
@@ -50,6 +56,23 @@ export default function PortfolioScreen() {
     const syms = holdings.map((h) => h.symbol)
     if (syms.length) ensureSymbols(syms)
   }, [holdings, ensureSymbols])
+
+  useEffect(() => {
+    const unknown = holdings.filter((h) => !isKnownSymbol(h.symbol))
+    if (!unknown.length) return
+    let cancelled = false
+    void keepYahooSymbols(holdings.map((h) => h.symbol)).then((ok) => {
+      if (cancelled) return
+      const allow = new Set(ok.map((s) => s.toUpperCase()))
+      const next = holdings.filter((h) => isKnownSymbol(h.symbol) || allow.has(h.symbol.toUpperCase()))
+      if (next.length === holdings.length) return
+      setHoldings(next)
+      saveHoldings(next)
+    })
+    return () => { cancelled = true }
+    // Only prune once on mount / after a settings wipe — not on every holdings edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.clearPortfolioKey])
 
   const addHolding = async () => {
     if (!sym.trim() || !shares || !avgPrice) return
@@ -86,12 +109,13 @@ export default function PortfolioScreen() {
     saveHoldings(next)
   }
 
-  const totalValue = holdings.reduce((sum, h) => sum + (data[h.symbol]?.regularMarketPrice ?? h.avgPrice) * h.shares, 0)
+  const px = (h: Holding) => markPrice(h.symbol, data[h.symbol], h.avgPrice, isSyntheticQuote(data[h.symbol]))
+  const totalValue = holdings.reduce((sum, h) => sum + px(h) * h.shares, 0)
   const totalCost = holdings.reduce((sum, h) => sum + h.avgPrice * h.shares, 0)
   const totalPnl = totalValue - totalCost
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0
-  const stockVal = holdings.filter((h) => STOCK_SET.has(h.symbol)).reduce((s, h) => s + (data[h.symbol]?.regularMarketPrice ?? h.avgPrice) * h.shares, 0)
-  const cryptoVal = holdings.filter((h) => CRYPTO_SET.has(h.symbol)).reduce((s, h) => s + (data[h.symbol]?.regularMarketPrice ?? h.avgPrice) * h.shares, 0)
+  const stockVal = holdings.filter((h) => STOCK_SET.has(h.symbol)).reduce((s, h) => s + px(h) * h.shares, 0)
+  const cryptoVal = holdings.filter((h) => CRYPTO_SET.has(h.symbol)).reduce((s, h) => s + px(h) * h.shares, 0)
   const otherVal = Math.max(0, totalValue - stockVal - cryptoVal)
   const stockPct = totalValue > 0 ? (stockVal / totalValue) * 100 : 0
   const cryptoPct = totalValue > 0 ? (cryptoVal / totalValue) * 100 : 0
@@ -144,7 +168,7 @@ export default function PortfolioScreen() {
 
       {showAdd && (
         <div className="panel form-card">
-          <input className="field" value={sym} onChange={(e) => setSym(e.target.value.toUpperCase())} placeholder="Symbol (e.g. AAPL, BTC-USD)" />
+          <input className="field" value={sym} onChange={(e) => setSym(e.target.value.toUpperCase())} placeholder="Yahoo Finance symbol (e.g. AAPL, BTC-USD)" />
           <div style={{ display: 'flex', gap: 8 }}>
             <input className="field" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="Shares / units" type="number" />
             <input className="field" value={avgPrice} onChange={(e) => setAvgPrice(e.target.value)} placeholder="Average price" type="number" />
@@ -158,7 +182,7 @@ export default function PortfolioScreen() {
         <EmptyState
           icon="◎"
           title="No holdings yet"
-          hint="Add a symbol, quantity, and average price to start tracking. Nothing here is a real brokerage account."
+          hint="Add a Yahoo Finance symbol, quantity, and average price to start tracking. Nothing here is a real brokerage account."
           action={<button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => setShowAdd(true)}>+ Add holding</button>}
         />
       )}
@@ -166,14 +190,15 @@ export default function PortfolioScreen() {
       <div className="asset-list">
         {holdings.map((h) => {
           const d = data[h.symbol]
-          const price = d?.regularMarketPrice ?? h.avgPrice
+          const live = Boolean(d) && (isKnownSymbol(h.symbol) || !isSyntheticQuote(d))
+          const price = live ? d!.regularMarketPrice : h.avgPrice
           const value = price * h.shares
           const cost = h.avgPrice * h.shares
           const pnl = value - cost
           const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
           const alloc = totalValue > 0 ? (value / totalValue) * 100 : 0
-          const day = d?.regularMarketChangePercent ?? 0
-          const dayCol = day > 0 ? 'var(--gain)' : day < 0 ? 'var(--loss)' : 'var(--amber)'
+          const day = live ? (d!.regularMarketChangePercent ?? 0) : 0
+          const dayCol = live ? (day > 0 ? 'var(--gain)' : day < 0 ? 'var(--loss)' : 'var(--amber)') : 'var(--amber)'
           const alerted = settings.alertThreshold > 0 && Math.abs(day) >= settings.alertThreshold
           return (
             <div key={h.id} className="hold-card" style={{ borderColor: alerted ? dayCol : undefined }}>
@@ -186,7 +211,7 @@ export default function PortfolioScreen() {
                       {alloc > 0 && <span className="tag" style={{ background: 'var(--surface)', color: 'var(--t3)' }}>{alloc.toFixed(1)}%</span>}
                       {alerted && <span className="tag" style={{ background: 'var(--loss-dim)', color: dayCol }}>ALERT</span>}
                     </div>
-                    <div className="muted">{nameOf(h.symbol)}</div>
+                    <div className="muted">{isKnownSymbol(h.symbol) || live ? nameOf(h.symbol) : 'Not on Yahoo Finance'}</div>
                   </div>
                   <button className="btn btn-danger btn-sm" onClick={() => removeHolding(h.id)}>Remove</button>
                 </div>
@@ -194,7 +219,7 @@ export default function PortfolioScreen() {
                   <div><div className="stat-lab">Qty</div><div className="stat-val">{h.shares}</div></div>
                   <div><div className="stat-lab">Price</div><div className="stat-val">${fmt(price, settings.priceDecimals)}</div></div>
                   <div><div className="stat-lab">Value</div><div className="stat-val" style={{ color: 'var(--amber)' }}>${fmt(value)}</div></div>
-                  <div><div className="stat-lab">Today</div><div className="stat-val" style={{ color: dayCol }}>{d ? fmtChg(day) : '—'}</div></div>
+                  <div><div className="stat-lab">Today</div><div className="stat-val" style={{ color: dayCol }}>{live ? fmtChg(day) : '—'}</div></div>
                 </div>
                 <div className="hold-pnl">
                   <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>Unrealised P&L</span>

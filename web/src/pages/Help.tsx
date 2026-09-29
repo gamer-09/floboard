@@ -23,6 +23,7 @@ const SECTIONS: HelpSection[] = [
     items: [
       { q: 'What does Overview show?', a: 'Live prices for global indices, commodities, Treasury yields, sector ETFs, large-cap stocks, and FX — plus open/closed hours for 33 exchanges.' },
       { q: 'What are Rates, Energy, Credit, and Copper?', a: 'Separate Macro tabs. Rates is the Treasury curve and 10Y–3M spread. Energy is WTI, Brent, and gas. Credit is HYG/LQD junk vs investment-grade. Copper is industrial metals.' },
+      { q: 'Where does market data come from?', a: 'Prices, charts, news, and search all come from Yahoo Finance — plus the in-app lists built from those same symbols. If a name is not on Yahoo, it cannot be searched, added, or shown in FloBoard.' },
       { q: 'How current is the data?', a: 'Quotes refresh automatically. Change the interval in Settings (30s, 60s, 90s, or 5 min).' },
       { q: 'What do the colors mean?', a: 'Green is up on the day. Red is down. Amber is flat or nearly unchanged.' },
     ],
@@ -49,8 +50,8 @@ const SECTIONS: HelpSection[] = [
       { q: 'Does Portfolio connect to a bank?', a: 'No. It is 100% simulated tracking. You type symbols, units, and cost basis yourself. There is no deposit flow and no brokerage login.' },
       { q: 'Is my data private?', a: 'Yes. Watchlist and holdings live in this browser only.' },
       { q: 'What does Clear Favorites do?', a: 'Settings → Clear Favorites empties only your custom watchlist. Preset market lists are never deleted.' },
-      { q: 'What are the Watchlist tabs?', a: '★ Favorites is yours. Tech & AI, Crypto, and FX & Metals are built-in lists. You can add or remove symbols on any tab. A ticker is only added if Yahoo Finance lists it — unknown names are not stored with a fake price.' },
-      { q: 'How do I add a holding?', a: 'Portfolio → + Add holding. Enter a ticker, quantity, and average price. It is simulated tracking only.' },
+      { q: 'What are the Watchlist tabs?', a: '★ Favorites is yours. Tech & AI, Crypto, and FX & Metals are built-in lists. Search looks up Yahoo Finance. If the ticker is not already in the app and not on Yahoo, it is not added and cannot be shown.' },
+      { q: 'How do I add a holding?', a: 'Portfolio → + Add holding. Enter a Yahoo Finance ticker, quantity, and average price. Symbols Yahoo does not list are refused. It is simulated tracking only.' },
       { q: 'What is asset allocation?', a: 'When you have holdings, Portfolio shows a stocks / crypto / other split. Percentages are of simulated value, not a real account.' },
     ],
   },

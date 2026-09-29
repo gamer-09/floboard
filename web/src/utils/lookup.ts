@@ -3,6 +3,10 @@ import { getApiBase } from './apiBase'
 
 const KNOWN = new Set(ALL_SYMBOLS)
 
+export function isKnownSymbol(raw: string): boolean {
+  return KNOWN.has(raw) || KNOWN.has(raw.trim().toUpperCase())
+}
+
 function isSyntheticQuote(q: {
   regularMarketVolume?: number
   regularMarketDayHigh?: number
@@ -12,6 +16,11 @@ function isSyntheticQuote(q: {
   if (q.regularMarketDayHigh == null || q.regularMarketPrice == null) return false
   const expected = +(q.regularMarketPrice * 1.01).toFixed(4)
   return Math.abs(q.regularMarketDayHigh - expected) < 0.001
+}
+
+export function yahooMissingMessage(sym: string): string {
+  const upper = sym.trim().toUpperCase() || 'That ticker'
+  return `${upper} is not on Yahoo Finance, so it cannot be added or shown. FloBoard only lists symbols Yahoo covers.`
 }
 
 export type LookupResult =
@@ -85,8 +94,41 @@ export async function verifySymbol(raw: string): Promise<LookupResult> {
     if (live) return { ok: true, sym, name: live.name }
   }
 
-  return {
-    ok: false,
-    error: `${upper} is not on Yahoo Finance, so it was not added. Nigerian NGX names (like Dangote / DANGCEM) usually are not listed there.`,
+  return { ok: false, error: yahooMissingMessage(upper) }
+}
+
+/** True only when Yahoo search ran and the ticker is not listed. Network failures return false (keep it). */
+export async function isDefinitelyNotOnYahoo(raw: string): Promise<boolean> {
+  const typed = raw.trim()
+  if (!typed || isKnownSymbol(typed)) return false
+  let searchOk = false
+  try {
+    const res = await fetch(`${getApiBase()}/api/search?q=${encodeURIComponent(typed)}`)
+    if (res.ok) {
+      searchOk = true
+      const json = await res.json() as { results?: { sym: string; name: string }[] }
+      const want = typed.toUpperCase()
+      if ((json.results ?? []).some((h) => h.sym.toUpperCase() === want)) return false
+    }
+  } catch { /* ignore */ }
+  if (!searchOk) return false
+  const upper = typed.toUpperCase()
+  const live = await quoteIsLive(typed) || await quoteIsLive(upper)
+  return !live
+}
+
+/** Keep in-app symbols and anything not proven missing from Yahoo. */
+export async function keepYahooSymbols(syms: string[]): Promise<string[]> {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of syms) {
+    const typed = String(raw || '').trim()
+    if (!typed || seen.has(typed)) continue
+    if (await isDefinitelyNotOnYahoo(typed)) continue
+    const sym = isKnownSymbol(typed) && !KNOWN.has(typed) ? typed.toUpperCase() : typed
+    if (seen.has(sym)) continue
+    seen.add(sym)
+    out.push(sym)
   }
+  return out
 }

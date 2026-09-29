@@ -60,6 +60,8 @@ function apiBase() {
 const YF_CHART = 'https://query2.finance.yahoo.com/v8/finance/chart'
 const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
 
+const KNOWN_SET = new Set(ALL_SYMBOLS)
+
 const PRIORITY_SYMBOLS = [
   ...INDICES.map((i) => i.sym),
   ...STOCKS.map((s) => s.sym),
@@ -309,9 +311,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setData((prev) => {
       const map = { ...prev }
       quotes.forEach((q) => {
-        if (q?.symbol && q.regularMarketPrice != null && isFinite(q.regularMarketPrice)) {
-          map[q.symbol] = q
-        }
+        if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
+        // Never store a fake fallback for a ticker that is not in the in-app catalog.
+        if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
+        map[q.symbol] = q
       })
       return map
     })
@@ -342,10 +345,11 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
         const old = prev[q.symbol]
         if (isSyntheticQuote(q) && old && !isSyntheticQuote(old)) return
+        if (isSyntheticQuote(q) && !KNOWN_SET.has(q.symbol)) return
         map[q.symbol] = q
       })
       symbols.forEach((s) => {
-        if (!map[s]) map[s] = getFallbackQuote(s)
+        if (!map[s] && KNOWN_SET.has(s)) map[s] = getFallbackQuote(s)
       })
 
       setData(map)
@@ -357,9 +361,23 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       if (retryRef.current) { clearTimeout(retryRef.current); retryRef.current = null }
 
       const priority = new Set([...PRIORITY_SYMBOLS, ...extra])
-      const synthetic = Object.values(map).filter((q) => isSyntheticQuote(q) && priority.has(q.symbol))
-      if (synthetic.length) {
-        void hydrateQuotes(synthetic, 6).then((hydrated) => {
+      const needHydrate: QuoteData[] = []
+      const seen = new Set<string>()
+      for (const q of Object.values(map)) {
+        if (isSyntheticQuote(q) && priority.has(q.symbol)) {
+          needHydrate.push(q)
+          seen.add(q.symbol)
+        }
+      }
+      for (const s of extra) {
+        if (seen.has(s)) continue
+        if (!map[s] || isSyntheticQuote(map[s])) {
+          needHydrate.push(map[s] || getFallbackQuote(s))
+          seen.add(s)
+        }
+      }
+      if (needHydrate.length) {
+        void hydrateQuotes(needHydrate, 6).then((hydrated) => {
           if (!hydrated.live) return
           applyQuotes(hydrated.results)
           setIsOnline(true)
@@ -394,13 +412,14 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     if (!missing.length) return
     void (async () => {
       const { results } = await fetchBatch(missing)
-      const known = new Set(ALL_SYMBOLS)
-      const usable = results.filter((q) => !isSyntheticQuote(q) || known.has(q.symbol))
-      applyQuotes(usable)
-      const synthetic = usable.filter(isSyntheticQuote)
-      if (synthetic.length) {
-        const hydrated = await hydrateQuotes(synthetic, 4)
-        applyQuotes(hydrated.results.filter((q) => !isSyntheticQuote(q) || known.has(q.symbol)))
+      applyQuotes(results)
+      const liveSyms = new Set(results.filter((q) => !isSyntheticQuote(q)).map((q) => q.symbol))
+      const stubs = missing
+        .filter((s) => !liveSyms.has(s))
+        .map((s) => results.find((q) => q.symbol === s) || getFallbackQuote(s))
+      if (stubs.length) {
+        const hydrated = await hydrateQuotes(stubs, 4)
+        applyQuotes(hydrated.results)
         if (hydrated.live) setIsOnline(true)
       }
     })()

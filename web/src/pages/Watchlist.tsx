@@ -2,17 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { EmptyState, SearchBox, Segmented } from '../components/ui'
-import { ALL_SYMBOLS, COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
+import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
 import { chgDir, fmt, fmtChg, fmtMcap, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { getApiBase } from '../utils/apiBase'
-import { verifySymbol } from '../utils/lookup'
-
-const KNOWN = new Set(ALL_SYMBOLS)
+import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
 
 function hasLiveQuote(sym: string, d: QuoteData | undefined) {
   if (!d) return false
-  if (KNOWN.has(sym)) return true
+  if (isKnownSymbol(sym)) return true
   return !isSyntheticQuote(d)
 }
 
@@ -116,10 +114,21 @@ export default function WatchlistScreen() {
       saveTab('Favorites', [])
       return
     }
-    setSymbols(loadTab(def))
+    const loaded = loadTab(def)
+    setSymbols(loaded)
     setSearch('')
     setExpanded(null)
     setLookupError('')
+    const unknown = loaded.filter((s) => !isKnownSymbol(s))
+    if (!unknown.length) return
+    let cancelled = false
+    void keepYahooSymbols(loaded).then((ok) => {
+      if (cancelled) return
+      if (ok.length === loaded.length && ok.every((s, i) => s === loaded[i])) return
+      setSymbols(ok)
+      saveTab(tab, ok)
+    })
+    return () => { cancelled = true }
   }, [tab, settings.clearWatchlistKey])
 
   useEffect(() => {
@@ -230,7 +239,7 @@ export default function WatchlistScreen() {
           onChange={(v) => setTab(v as TabId)}
           options={TABS.map((t) => ({ label: t.label, value: t.id }))}
         />
-        <SearchBox value={search} onChange={setSearch} placeholder="Search stocks, crypto, gold, FX…" />
+        <SearchBox value={search} onChange={setSearch} placeholder="Search Yahoo Finance…" />
         <span className="muted">{sorted.length} tracked</span>
       </div>
 
@@ -239,7 +248,7 @@ export default function WatchlistScreen() {
           {lookingUp && <div className="muted">Checking Yahoo Finance…</div>}
           {lookupError && <div className="lookup-err">{lookupError}</div>}
           {!lookingUp && searchResults.length === 0 && !lookupError && (
-            <div className="muted">No Yahoo Finance match. If it isn’t listed there, it will not be added.</div>
+            <div className="muted">No match in the app or on Yahoo Finance. If it isn’t listed there, it cannot be added or shown.</div>
           )}
           {searchResults.map((cat) => (
             <button
@@ -322,7 +331,7 @@ export default function WatchlistScreen() {
                         </div>
                       </>
                     ) : (
-                      <p className="muted" style={{ whiteSpace: 'normal' }}>This ticker is not on Yahoo Finance, so there is no live quote. Remove it from the list.</p>
+                      <p className="muted" style={{ whiteSpace: 'normal' }}>This ticker is not on Yahoo Finance, so FloBoard cannot show it. Remove it from the list.</p>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       {live && <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); openAi(sym, name) }}>Ask FloAI</button>}

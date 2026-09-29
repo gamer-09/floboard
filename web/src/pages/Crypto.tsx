@@ -89,6 +89,14 @@ export default function CryptoScreen() {
         />
       </div>
 
+      {filtered.length === 0 && (
+        <div className="muted" style={{ padding: 20 }}>
+          {search.trim()
+            ? 'No match. This tab only lists coins Yahoo Finance covers.'
+            : 'No coins in this filter.'}
+        </div>
+      )}
+
       <div className="asset-list">
         {filtered.map((ct) => {
           const d = data[ct.sym]
