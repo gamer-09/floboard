@@ -1,5 +1,7 @@
 # FloBoard
 
+**[Open the live web version →](https://gamer-09.github.io/floboard/)**
+
 FloBoard is a mobile/web financial markets dashboard built with React Native + Expo, backed by an
 Express API server that pulls live data from Yahoo Finance. This repo is a pnpm workspace
 monorepo containing the app, the API server, and a few shared internal libraries.
