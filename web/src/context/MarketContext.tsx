@@ -57,7 +57,6 @@ function apiBase() {
 }
 
 const YF_CHART = 'https://query2.finance.yahoo.com/v8/finance/chart'
-const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
 
 const FIRST_PAINT = [
   '^GSPC', '^IXIC', '^DJI', '^NDX', '^RUT', '^VIX',
@@ -199,7 +198,7 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData | null; li
   try {
     const res = await fetchWithTimeout(
       `${YF_CHART}/${encodeURIComponent(targetSym)}?interval=1d&range=1d&includePrePost=true`,
-      { headers: { 'User-Agent': NATIVE_UA, Accept: 'application/json' } },
+      { headers: { Accept: 'application/json' } },
       10000,
     )
     if (!res.ok) return { quote: null, live: false }
@@ -300,6 +299,18 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
   try {
     const { quote, live } = await fetchOneChart(sym)
     if (live && quote && quote.regularMarketPrice > 0 && !isSyntheticQuote(quote)) return quote
+  } catch { /* ignore */ }
+  try {
+    const res = await fetchWithTimeout(
+      `${apiBase()}/api/market?symbols=${encodeURIComponent(sym)}`,
+      {},
+      8000,
+    )
+    if (res.ok) {
+      const json = await res.json() as { results?: QuoteData[] }
+      const q = json.results?.[0]
+      if (q && q.regularMarketPrice > 0 && !isSyntheticQuote(q)) return { ...q, symbol: sym }
+    }
   } catch { /* ignore */ }
   return null
 }

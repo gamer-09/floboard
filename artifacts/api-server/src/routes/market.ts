@@ -1,6 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import { Router } from "express";
-import { fetchLiveQuotes, fetchYahooChartPrices } from "../lib/yahooQuotes";
+import { fetchLiveQuotes, fetchYahooChart, fetchYahooChartPrices } from "../lib/yahooQuotes";
 import { attachNasdaqMcaps, fetchLiveMcaps } from "../lib/nasdaqMcap";
 
 const router = Router();
@@ -153,6 +153,22 @@ router.get("/market", async (req, res) => {
 
     // Stamp each quote with the *requested* symbol. Yahoo sometimes normalises
     // (e.g. "BRK-B" → "BRK.B"); the client maps by the key it sent.
+    const stillNeed = symbols.filter((s) => !live.has(s) && !yfByRequested.has(s));
+    if (stillNeed.length && process.env.VITEST !== "true") {
+      for (let i = 0; i < stillNeed.length; i += 8) {
+        const slice = stillNeed.slice(i, i + 8);
+        const charts = await Promise.all(
+          slice.map(async (s) => {
+            const { quote } = await fetchYahooChart(resolveSymbolAlias(s), "1d");
+            return { s, quote };
+          }),
+        );
+        for (const { s, quote } of charts) {
+          if (quote) live.set(s, { ...quote, symbol: s });
+        }
+      }
+    }
+
     const results: unknown[] = [];
     for (const requestedSym of symbols) {
       const crumbQuote = live.get(requestedSym);
@@ -269,9 +285,9 @@ router.get("/market/history", async (req, res) => {
       .map((q) => ({ t: Math.floor(q.date.getTime() / 1000), c: q.close }));
 
     if (prices.length < 2 || isEvenStub(prices)) {
-      const livePrices = await fetchYahooChartPrices(targetSym, range);
-      if (livePrices.length >= 2 && !isEvenStub(livePrices)) prices = livePrices;
-      else if (prices.length < 2 && livePrices.length >= 2) prices = livePrices;
+      const chart = await fetchYahooChart(targetSym, range);
+      if (chart.prices.length >= 2 && !isEvenStub(chart.prices)) prices = chart.prices;
+      else if (prices.length < 2 && chart.prices.length >= 2) prices = chart.prices;
     }
     if (prices.length < 2) {
       res.json({ symbol: sym, range, prices: [] });

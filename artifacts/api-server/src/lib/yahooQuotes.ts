@@ -31,50 +31,8 @@ export async function fetchYahooChartPrices(
   sym: string,
   range: string,
 ): Promise<Array<{ t: number; c: number }>> {
-  const attempts: Array<{ range: string; interval: string }> =
-    range === "1d"
-      ? [
-          { range: "1d", interval: "5m" },
-          { range: "5d", interval: "1h" },
-        ]
-      : range === "7d"
-        ? [
-            { range: "5d", interval: "1h" },
-            { range: "1mo", interval: "1d" },
-          ]
-        : range === "1mo"
-          ? [{ range: "1mo", interval: "1d" }]
-          : [{ range: "3mo", interval: "1d" }];
-
-  for (const a of attempts) {
-    try {
-      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${a.interval}&range=${a.range}`;
-      const res = await fetch(url, {
-        headers: { "User-Agent": UA, Accept: "application/json" },
-      });
-      if (!res.ok) continue;
-      const json = (await res.json()) as {
-        chart?: {
-          result?: Array<{
-            timestamp?: number[];
-            indicators?: { quote?: Array<{ close?: Array<number | null> }> };
-          }>;
-        };
-      };
-      const row = json.chart?.result?.[0];
-      const ts = row?.timestamp ?? [];
-      const close = row?.indicators?.quote?.[0]?.close ?? [];
-      const prices: Array<{ t: number; c: number }> = [];
-      for (let i = 0; i < ts.length; i++) {
-        const c = close[i];
-        if (typeof c === "number" && Number.isFinite(c) && c > 0) prices.push({ t: ts[i], c });
-      }
-      if (prices.length >= 2) return prices;
-    } catch {
-      /* try next */
-    }
-  }
-  return [];
+  const { prices } = await fetchYahooChart(sym, range);
+  return prices;
 }
 
 function crumbEnabled() {
@@ -252,4 +210,115 @@ export async function fetchLiveQuotes(
     }
   }
   return out;
+}
+
+function quoteFromChartMeta(meta: Record<string, unknown>, requested: string): YahooLiveQuote | null {
+  const price = num(meta.regularMarketPrice);
+  if (price == null) return null;
+  const prev = num(meta.chartPreviousClose) ?? num(meta.previousClose) ?? price;
+  const change = price - prev;
+  const changePct = prev ? (change / prev) * 100 : 0;
+  return {
+    symbol: requested,
+    shortName: typeof meta.shortName === "string" ? meta.shortName : undefined,
+    quoteType: typeof meta.instrumentType === "string" ? meta.instrumentType : undefined,
+    currency: typeof meta.currency === "string" ? meta.currency : undefined,
+    regularMarketPrice: price,
+    regularMarketChangePercent: num(meta.regularMarketChangePercent) ?? changePct,
+    regularMarketChange: num(meta.regularMarketChange) ?? change,
+    regularMarketPreviousClose: prev,
+    regularMarketOpen: num(meta.regularMarketOpen),
+    regularMarketDayHigh: num(meta.regularMarketDayHigh),
+    regularMarketDayLow: num(meta.regularMarketDayLow),
+    regularMarketVolume: num(meta.regularMarketVolume) ?? 0,
+    fiftyTwoWeekHigh: num(meta.fiftyTwoWeekHigh),
+    fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
+    marketCap: num(meta.marketCap) ?? 0,
+  };
+}
+
+export async function fetchYahooChart(
+  sym: string,
+  range: string,
+): Promise<{ prices: Array<{ t: number; c: number }>; quote: YahooLiveQuote | null }> {
+  const attempts: Array<{ range: string; interval: string }> =
+    range === "1d"
+      ? [
+          { range: "1d", interval: "5m" },
+          { range: "5d", interval: "1h" },
+          { range: "1mo", interval: "1d" },
+        ]
+      : range === "7d"
+        ? [
+            { range: "5d", interval: "1h" },
+            { range: "1mo", interval: "1d" },
+            { range: "5d", interval: "1d" },
+          ]
+        : range === "1mo"
+          ? [
+              { range: "1mo", interval: "1d" },
+              { range: "3mo", interval: "1d" },
+            ]
+          : [
+              { range: "3mo", interval: "1d" },
+              { range: "1mo", interval: "1d" },
+            ];
+
+  if (crumbEnabled()) {
+    try {
+      await ensureSession();
+    } catch {
+      /* chart still worth trying without crumb */
+    }
+  }
+
+  let quote: YahooLiveQuote | null = null;
+  const hosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
+
+  for (const host of hosts) {
+    for (const a of attempts) {
+      const url = `https://${host}/v8/finance/chart/${encodeURIComponent(sym)}?interval=${a.interval}&range=${a.range}&includePrePost=true`;
+      try {
+        const res = crumbEnabled() && jar.size
+          ? await request(url, jar)
+          : await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+        if (!res.ok) continue;
+        const json = (await res.json()) as {
+          chart?: {
+            result?: Array<{
+              meta?: Record<string, unknown>;
+              timestamp?: number[];
+              indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+            }>;
+          };
+        };
+        const row = json.chart?.result?.[0];
+        if (!row) continue;
+        if (!quote && row.meta) quote = quoteFromChartMeta(row.meta, sym);
+        const ts = row.timestamp ?? [];
+        const close = row.indicators?.quote?.[0]?.close ?? [];
+        const prices: Array<{ t: number; c: number }> = [];
+        for (let i = 0; i < ts.length; i++) {
+          const c = close[i];
+          if (typeof c === "number" && Number.isFinite(c) && c > 0) prices.push({ t: ts[i], c });
+        }
+        if (prices.length >= 2) return { prices, quote };
+      } catch {
+        /* try next host/range */
+      }
+    }
+  }
+
+  if (quote) {
+    const now = Math.floor(Date.now() / 1000);
+    const prev = quote.regularMarketPreviousClose || quote.regularMarketPrice;
+    return {
+      prices: [
+        { t: now - 86400, c: prev },
+        { t: now, c: quote.regularMarketPrice },
+      ],
+      quote,
+    };
+  }
+  return { prices: [], quote: null };
 }
