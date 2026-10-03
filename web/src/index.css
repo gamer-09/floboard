@@ -4,7 +4,7 @@ html, body, #root { height: 100%; width: 100%; overflow: hidden; }
 html { color-scheme: dark; }
 
 body {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--void, #080B10);
   color: var(--t1, #E8EDF5);
   -webkit-font-smoothing: antialiased;
@@ -35,7 +35,7 @@ body {
   --sidebar-w: 220px;
   --topbar-h: 56px;
   --page-w: 1080px;
-  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 button, input, select, textarea { font-family: inherit; }

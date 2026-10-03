@@ -220,7 +220,6 @@ export default function AdvisorScreen() {
         body: JSON.stringify({
           messages: apiMessages,
           systemPrompt: system,
-          geminiApiKey: settings.geminiApiKey,
         }),
       })
       const json = await proxyRes.json() as { content?: string; error?: string }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import YahooFinance from "yahoo-finance2";
+import { rateLimit, sanitizeChatMessages, sanitizeExtraContext } from "../lib/security";
 
 const router = Router();
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -176,14 +177,11 @@ router.get("/chat/status", (_req, res) => {
   res.json({ hasServerKey: !!SERVER_GEMINI_API_KEY });
 });
 
-router.post("/chat", async (req, res) => {
-  const { messages, systemPrompt: clientSystemPrompt, geminiApiKey: clientApiKey } = req.body as {
-    messages?: ChatMessageInput[];
-    systemPrompt?: string;
-    geminiApiKey?: string;
-  };
+router.post("/chat", rateLimit(8, 60_000), async (req, res) => {
+  const messages = sanitizeChatMessages((req.body as { messages?: unknown })?.messages);
+  const clientSystemPrompt = sanitizeExtraContext((req.body as { systemPrompt?: unknown })?.systemPrompt);
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+  if (!messages) {
     res.status(400).json({ error: "messages array is required" });
     return;
   }
@@ -196,8 +194,8 @@ router.post("/chat", async (req, res) => {
 
   const userQuery = lastUserMessage.content.trim();
 
-  // Prefer the user-supplied key from the request body, fall back to server env var
-  const resolvedApiKey = clientApiKey?.trim() || SERVER_GEMINI_API_KEY;
+  // Never accept a client-supplied Gemini key — that would leak user secrets onto the server.
+  const resolvedApiKey = SERVER_GEMINI_API_KEY;
 
   if (!resolvedApiKey) {
     res.status(503).json({ error: "No Gemini API key provided. Add your key in Settings → Gemini API Key." });
@@ -243,8 +241,8 @@ router.post("/chat", async (req, res) => {
       });
 
       if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        req.log.error({ status: geminiRes.status, body: errText }, "Gemini API error");
+        await geminiRes.text().catch(() => "");
+        req.log.error({ status: geminiRes.status }, "Gemini API error");
         if (geminiRes.status === 429) {
           res.status(429).json({ error: "Gemini free tier quota reached for today. It resets every 24 hours — try again tomorrow, or upgrade your Gemini API plan at aistudio.google.com." });
         } else if (geminiRes.status === 400 || geminiRes.status === 401 || geminiRes.status === 403) {
@@ -287,8 +285,8 @@ router.post("/chat", async (req, res) => {
     });
 
     if (!geminiRes.ok || !geminiRes.body) {
-      const errText = await geminiRes.text();
-      req.log.error({ status: geminiRes.status, body: errText }, "Gemini stream error");
+      await geminiRes.text().catch(() => "");
+      req.log.error({ status: geminiRes.status }, "Gemini stream error");
       if (geminiRes.status === 429) {
         sendChunk({ error: "Gemini free tier quota reached for today. It resets every 24 hours — try again tomorrow, or upgrade your Gemini API plan at aistudio.google.com." });
       } else if (geminiRes.status === 400 || geminiRes.status === 401 || geminiRes.status === 403) {
