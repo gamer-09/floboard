@@ -56,6 +56,22 @@ const SYMBOL_ALIASES: Record<string, string> = {
   "ZI=F": "ZNC=F",
 };
 
+function resolveSymbolAlias(sym: string): string {
+  const s = sym.trim().toUpperCase();
+  if (SYMBOL_ALIASES[s]) return SYMBOL_ALIASES[s];
+  if (s.includes("/")) {
+    const clean = s.replace("/", "");
+    if (["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"].includes(clean)) {
+      return SYMBOL_ALIASES[clean] || "GC=F";
+    }
+    if (clean.endsWith("USD") && ["BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD", "DOGEUSD"].includes(clean)) {
+      return clean.replace("USD", "-USD");
+    }
+    return `${clean}=X`;
+  }
+  return s;
+}
+
 // ── In-memory chart history cache ─────────────────────────────────────────
 // Prevents the ~100-request burst on app startup from hitting Yahoo Finance
 // rate limits. TTL: 60 s for intraday (1d), 5 min for daily/weekly ranges.
