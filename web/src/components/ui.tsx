@@ -103,14 +103,17 @@ export function SearchBox({
   )
 }
 
-export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+export function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
       className={`toggle ${checked ? 'on' : ''}`}
-      onClick={() => onChange(!checked)}
+      style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+      onClick={() => { if (!disabled) onChange(!checked) }}
     >
       <span className="toggle-knob" />
     </button>

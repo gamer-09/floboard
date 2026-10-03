@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { OptionGroup, Toggle } from '../components/ui'
 import { useSettings, type AlertThreshold, type AppTheme, type EarningsWindow, type NewsCount, type PriceDecimals, type RefreshInterval, type RiskProfile, type WatchlistSort } from '../context/SettingsContext'
+import { areNotificationsSupported, notificationPermission, requestNotificationPermissions, sendLocalNotification } from '../utils/notifications'
 
 function SettingRow({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -25,6 +26,36 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 
 export default function SettingsScreen() {
   const { settings, updateSetting, triggerClearChat, triggerClearWatchlist, triggerClearPortfolio, resetAllSettings } = useSettings()
+  const [notifError, setNotifError] = useState('')
+  const supported = areNotificationsSupported()
+  const perm = notificationPermission()
+
+  const toggleNotifications = async (on: boolean) => {
+    setNotifError('')
+    if (!on) {
+      updateSetting('notificationsEnabled', false)
+      return
+    }
+    if (!supported) {
+      setNotifError('This browser does not support notifications.')
+      return
+    }
+    const ok = await requestNotificationPermissions()
+    if (!ok) {
+      setNotifError('Allow notifications in the browser prompt (or site settings) to turn this on.')
+      updateSetting('notificationsEnabled', false)
+      return
+    }
+    updateSetting('notificationsEnabled', true)
+  }
+
+  const sendTest = () => {
+    sendLocalNotification(
+      'FloBoard test alert',
+      'Notifications are working in this browser. Portfolio, market, and news alerts will use this same channel.',
+      { tag: 'floboard-test', href: '#/settings' },
+    )
+  }
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
@@ -106,8 +137,39 @@ export default function SettingsScreen() {
         </SettingRow>
       </Block>
 
+      <Block title="Notifications">
+        {!supported && (
+          <div className="muted" style={{ padding: '12px 16px', whiteSpace: 'normal' }}>
+            This browser cannot show notifications. Try Chrome, Firefox, Edge, or Safari on a device that allows them.
+          </div>
+        )}
+        {perm === 'denied' && (
+          <div className="muted" style={{ padding: '12px 16px', whiteSpace: 'normal' }}>
+            Notifications are blocked for this site. Allow them in the browser’s site settings, then turn the switch on again.
+          </div>
+        )}
+        <SettingRow label="Enable notifications" desc="Asks this browser for permission. Alerts stay on this device — no email, no phone number.">
+          <Toggle checked={settings.notificationsEnabled} onChange={(v) => { void toggleNotifications(v) }} disabled={!supported} />
+        </SettingRow>
+        <SettingRow label="Portfolio moves" desc="Alert when a simulated holding’s day change crosses the threshold below.">
+          <Toggle checked={settings.notifyPortfolio} onChange={(v) => updateSetting('notifyPortfolio', v)} disabled={!settings.notificationsEnabled} />
+        </SettingRow>
+        <SettingRow label="Major market moves" desc="Alert when S&P 500, Nasdaq, Dow, or Bitcoin moves 1.5% or more on the session.">
+          <Toggle checked={settings.notifyMarketMoves} onChange={(v) => updateSetting('notifyMarketMoves', v)} disabled={!settings.notificationsEnabled} />
+        </SettingRow>
+        <SettingRow label="Breaking news" desc="Alert when Yahoo posts a new top market headline.">
+          <Toggle checked={settings.notifyNews} onChange={(v) => updateSetting('notifyNews', v)} disabled={!settings.notificationsEnabled} />
+        </SettingRow>
+        {settings.notificationsEnabled && supported && perm === 'granted' && (
+          <SettingRow label="Test alert" desc="Sends one real notification now so you can confirm the browser shows it.">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={sendTest}>Send test</button>
+          </SettingRow>
+        )}
+        {notifError && <div className="lookup-err" style={{ margin: '8px 16px 12px' }}>{notifError}</div>}
+      </Block>
+
       <Block title="Portfolio alerts">
-        <SettingRow label="Day-move threshold" desc="Highlight a holding when its daily move exceeds this. Off = no highlight.">
+        <SettingRow label="Day-move threshold" desc="Highlight a holding — and fire a portfolio notification if those are on — when the daily move exceeds this. Off = no highlight and no portfolio alerts.">
           <OptionGroup
             options={[{ label: 'Off', value: 0 }, { label: '3%', value: 3 }, { label: '5%', value: 5 }, { label: '10%', value: 10 }]}
             value={settings.alertThreshold}

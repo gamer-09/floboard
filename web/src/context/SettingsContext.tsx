@@ -15,6 +15,10 @@ export interface AppSettings {
   newsCount: NewsCount
   alertThreshold: AlertThreshold
   clearChatKey: number
+  notificationsEnabled: boolean
+  notifyPortfolio: boolean
+  notifyMarketMoves: boolean
+  notifyNews: boolean
   riskProfile: RiskProfile
   watchlistSort: WatchlistSort
   earningsWindow: EarningsWindow
@@ -34,6 +38,10 @@ const DEFAULT: AppSettings = {
   clearChatKey: 0,
   clearWatchlistKey: 0,
   clearPortfolioKey: 0,
+  notificationsEnabled: false,
+  notifyPortfolio: true,
+  notifyMarketMoves: true,
+  notifyNews: true,
   riskProfile: 'moderate',
   watchlistSort: 'change',
   earningsWindow: 4,

@@ -16,6 +16,7 @@ import Rates from './pages/Rates'
 import Settings from './pages/Settings'
 import Watchlist from './pages/Watchlist'
 import { canonicalPath, normalizePath } from './utils/routes'
+import { useMarketNotifications } from './hooks/useMarketNotifications'
 
 function AppRoutes() {
   const loc = useLocation()
@@ -73,10 +74,16 @@ function AppRoutes() {
   )
 }
 
+function NotificationWatcher() {
+  useMarketNotifications()
+  return null
+}
+
 export default function App() {
   return (
     <>
       <ThemeSync />
+      <NotificationWatcher />
       <AppShell>
         <AppRoutes />
       </AppShell>
