@@ -135,7 +135,7 @@ router.get("/news", async (req, res) => {
 
     const results = await Promise.allSettled(
       queries.map((q) =>
-        yf.search(q, { newsCount: 6, quotesCount: 0, enableNavLinks: false }, { validateResult: false })
+        yf.search(q, { newsCount: 10, quotesCount: 0, enableNavLinks: false }, { validateResult: false })
       )
     );
 
@@ -174,15 +174,10 @@ router.get("/news", async (req, res) => {
     allNews.sort((a, b) => b.ts - a.ts);
     const final = allNews.slice(0, articleLimit).map((x) => x.item);
 
-    if (final.length === 0) {
-      res.json({ news: FALLBACK_NEWS_SERVER.slice(0, articleLimit) });
-      return;
-    }
-
     res.json({ news: final });
   } catch (err) {
-    req.log?.error({ err }, "Failed to fetch news, using fallback");
-    res.json({ news: FALLBACK_NEWS_SERVER.slice(0, articleLimit) });
+    req.log?.debug({ err }, "Failed to fetch news");
+    res.json({ news: [] });
   }
 });
 

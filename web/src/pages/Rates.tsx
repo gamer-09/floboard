@@ -8,7 +8,7 @@ import { useFormat } from '../hooks/useFormat'
 export default function RatesScreen() {
   const { data, ensureSymbols } = useMarket()
   const { price } = useFormat()
-  useEffect(() => { ensureSymbols(['^IRX', '^TU', '^FVX', '^TNX', '^TYX', 'TLT', '^MOVE']) }, [ensureSymbols])
+  useEffect(() => { ensureSymbols(['^IRX', '2YY=F', '^FVX', '^TNX', '^TYX', 'TLT', '^MOVE']) }, [ensureSymbols])
 
   const tnx = data['^TNX']
   const irx = data['^IRX']
@@ -67,6 +67,7 @@ export default function RatesScreen() {
       <Section label="Rates complex">
         <div className="asset-list">
           <QuoteRow sym="^IRX" name="3-month T-bill" unit="yield" decimals={2} prefix="" />
+          <QuoteRow sym="2YY=F" name="2-year yield" unit="yield" decimals={2} prefix="" />
           <QuoteRow sym="^FVX" name="5-year yield" unit="yield" decimals={2} prefix="" />
           <QuoteRow sym="^TNX" name="10-year yield" unit="yield" decimals={2} prefix="" />
           <QuoteRow sym="^TYX" name="30-year yield" unit="yield" decimals={2} prefix="" />

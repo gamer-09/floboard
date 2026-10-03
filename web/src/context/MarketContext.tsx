@@ -62,7 +62,7 @@ const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (
 const FIRST_PAINT = [
   '^GSPC', '^IXIC', '^DJI', '^NDX', '^RUT', '^VIX',
   '^BSESN', '^NSEI',
-  'BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F', 'DX-Y.NYB', '^TNX', '^IRX',
+  'BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F', 'DX-Y.NYB', '^TNX', '^IRX', '2YY=F',
   'LBR=F', 'ZNC=F', 'NICK.L', 'HG=F', 'ALI=F',
 ]
 
@@ -84,6 +84,20 @@ function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 15000): P
 }
 
 /** Server fallback stamps volume=1e6 and dayHigh = price * 1.01. */
+/** When extended hours is on, prefer pre/post prints if Yahoo sent them. */
+export function sessionQuote(q: QuoteData, extended: boolean): { price: number; chg: number; tag: 'PRE' | 'AH' | null } {
+  if (extended && q.preMarketPrice != null && q.preMarketPrice > 0) {
+    const prev = q.regularMarketPreviousClose || q.regularMarketPrice
+    const chg = q.preMarketChangePercent ?? (prev ? ((q.preMarketPrice - prev) / prev) * 100 : 0)
+    return { price: q.preMarketPrice, chg, tag: 'PRE' }
+  }
+  if (extended && q.postMarketPrice != null && q.postMarketPrice > 0) {
+    const chg = q.postMarketChangePercent ?? 0
+    return { price: q.postMarketPrice, chg, tag: 'AH' }
+  }
+  return { price: q.regularMarketPrice, chg: q.regularMarketChangePercent, tag: null }
+}
+
 export function isSyntheticQuote(q: QuoteData | undefined): boolean {
   if (!q) return true
   if (q.regularMarketVolume !== 1_000_000) return false

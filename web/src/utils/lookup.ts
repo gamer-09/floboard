@@ -1,5 +1,6 @@
 import { ALL_SYMBOLS } from '../constants/marketData'
 import { getApiBase } from './apiBase'
+import { getFallbackQuote, isStubHistory, resolveSymbolAlias } from './symbolFallbacks'
 
 const KNOWN = new Set(ALL_SYMBOLS)
 
@@ -58,10 +59,11 @@ async function quoteIsLive(sym: string): Promise<{ name: string } | null> {
   try {
     const res = await fetch(`${getApiBase()}/api/market/history?symbol=${encodeURIComponent(sym)}&range=7d`)
     if (res.ok) {
-      const json = await res.json() as { prices?: Array<{ c: number }> }
-      const prices = json.prices ?? []
-      const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
-      if (prices.length >= 2 && !syntheticLen) return { name: sym }
+      const json = await res.json() as { prices?: Array<{ t: number; c: number }>; shortName?: string }
+      const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
+      if (prices.length >= 2 && !isStubHistory(prices, getFallbackQuote(sym).regularMarketPrice)) {
+        return { name: json.shortName || sym }
+      }
     }
   } catch { /* ignore */ }
   return null
@@ -71,8 +73,9 @@ async function quoteIsLive(sym: string): Promise<{ name: string } | null> {
 export async function verifySymbol(raw: string): Promise<LookupResult> {
   const typed = raw.trim()
   if (!typed) return { ok: false, error: 'Enter a ticker.' }
-  if (KNOWN.has(typed) || KNOWN.has(typed.toUpperCase())) {
-    const sym = KNOWN.has(typed) ? typed : typed.toUpperCase()
+  const resolved = resolveSymbolAlias(typed)
+  if (KNOWN.has(typed) || KNOWN.has(typed.toUpperCase()) || KNOWN.has(resolved)) {
+    const sym = KNOWN.has(typed) ? typed : KNOWN.has(typed.toUpperCase()) ? typed.toUpperCase() : resolved
     return { ok: true, sym, name: sym }
   }
 

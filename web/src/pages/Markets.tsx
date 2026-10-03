@@ -4,7 +4,8 @@ import SparklineChart from '../components/SparklineChart'
 import { ChangeBadge, Section, Segmented } from '../components/ui'
 import { EXCHANGES, getExchangeStatus } from '../constants/exchanges'
 import { BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, SECTORS, STOCKS } from '../constants/marketData'
-import { chgDir, fmt, fmtChg, useMarket } from '../context/MarketContext'
+import { chgDir, fmt, fmtChg, sessionQuote, useMarket } from '../context/MarketContext'
+import { useSettings } from '../context/SettingsContext'
 import { useColors } from '../hooks/useColors'
 import { useFormat } from '../hooks/useFormat'
 
@@ -103,6 +104,7 @@ function MarketHoursSection() {
 export default function MarketsScreen() {
   const c = useColors()
   const { data, lastUpdated } = useMarket()
+  const { settings } = useSettings()
   const { mcap, compact, price } = useFormat()
   const [moverTab, setMoverTab] = useState('All')
 
@@ -315,16 +317,17 @@ export default function MarketsScreen() {
             <tbody>
               {STOCKS.map((s) => {
                 const d = data[s.sym]
-                const chg = d?.regularMarketChangePercent ?? 0
+                const sess = d ? sessionQuote(d, settings.showExtendedHours) : null
+                const chg = sess?.chg ?? 0
                 const dir = chgDir(chg)
                 return (
                   <tr key={s.sym}>
                     <td>
                       <div className="sym">{s.sym}</div>
-                      <div className="muted">{s.name}</div>
+                      <div className="muted">{s.name}{sess?.tag ? ` · ${sess.tag}` : ''}</div>
                     </td>
-                    <td className="num">{d ? `$${price(d.regularMarketPrice)}` : '—'}</td>
-                    <td className="num" style={{ color: dir === 'up' ? c.gain : dir === 'dn' ? c.loss : c.t2 }}>{d ? fmtChg(chg) : '—'}</td>
+                    <td className="num">{sess ? `$${price(sess.price)}` : '—'}</td>
+                    <td className="num" style={{ color: dir === 'up' ? c.gain : dir === 'dn' ? c.loss : c.t2 }}>{sess ? fmtChg(chg) : '—'}</td>
                     <td className="num" style={{ color: 'var(--t3)' }}>{d ? mcap(d.marketCap, s.sym) : '—'}</td>
                   </tr>
                 )

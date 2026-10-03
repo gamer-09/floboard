@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import SparklineChart from './SparklineChart'
-import { chgDir, fmtChg, useMarket } from '../context/MarketContext'
+import { chgDir, fmtChg, sessionQuote, useMarket } from '../context/MarketContext'
+import { useSettings } from '../context/SettingsContext'
 import { useFormat } from '../hooks/useFormat'
 
 export default function QuoteRow({
@@ -17,11 +18,13 @@ export default function QuoteRow({
   prefix?: string
 }) {
   const { data } = useMarket()
+  const { settings } = useSettings()
   const { price, compact } = useFormat()
   const [open, setOpen] = useState(false)
   const d = data[sym]
   const dps = !compact && decimals === 0 ? 2 : decimals
-  const chg = d?.regularMarketChangePercent ?? 0
+  const sess = d ? sessionQuote(d, settings.showExtendedHours) : null
+  const chg = sess?.chg ?? 0
   const dir = chgDir(chg)
   const col = dir === 'up' ? 'var(--gain)' : dir === 'dn' ? 'var(--loss)' : 'var(--t2)'
   return (
@@ -38,8 +41,10 @@ export default function QuoteRow({
           <SparklineChart symbol={sym} range="7d" width={80} height={32} color={col} />
         </div>
         <div className="right">
-          <div className="mono" style={{ fontWeight: 700 }}>{d ? `${prefix}${price(d.regularMarketPrice, dps)}` : '—'}</div>
-          <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
+          <div className="mono" style={{ fontWeight: 700 }}>{sess ? `${prefix}${price(sess.price, dps)}` : '—'}</div>
+          <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>
+            {sess ? fmtChg(chg) : '—'}{sess?.tag ? <span className="muted"> {sess.tag}</span> : null}
+          </div>
         </div>
         <span style={{ color: 'var(--t4)', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
       </div>

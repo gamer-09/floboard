@@ -110,8 +110,8 @@ async function fetchNews(count: number): Promise<NewsItem[]> {
       const items = normalizeNews(json.news ?? json.items)
       if (items.length) return items.slice(0, count)
     }
-  } catch { /* fallback */ }
-  return FALLBACK_NEWS.slice(0, count)
+  } catch { /* live only — never invent headlines */ }
+  return []
 }
 
 async function fetchEarnings(weeks: number): Promise<EarningItem[]> {
@@ -128,8 +128,8 @@ async function fetchEarnings(weeks: number): Promise<EarningItem[]> {
       const json = await res.json() as { earnings?: EarningItem[] }
       if (json.earnings?.length) return json.earnings
     }
-  } catch { /* fallback */ }
-  return filterByWeeks(FALLBACK_EARNINGS)
+  } catch { /* live only — never invent earnings */ }
+  return []
 }
 
 function fmtRevenue(n: number | null, compact: boolean): string {
@@ -256,6 +256,9 @@ export default function NewsScreen() {
 
         {newsQ.isLoading && (
           <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}><div className="spinner" /></div>
+        )}
+        {!newsQ.isLoading && items.length === 0 && (
+          <div className="muted" style={{ padding: 12 }}>No live headlines right now. Try Refresh.</div>
         )}
 
         <div className="news-list">
