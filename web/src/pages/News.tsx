@@ -76,6 +76,52 @@ async function fetchNews(count: number): Promise<NewsItem[]> {
   return []
 }
 
+function parseEps(raw: unknown): number | null {
+  if (raw == null) return null
+  const n = Number(String(raw).replace(/[$,]/g, '').trim())
+  return Number.isFinite(n) ? n : null
+}
+
+function weekdaysAhead(days: number): string[] {
+  const out: string[] = []
+  const d = new Date()
+  const cur = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  for (let i = 0; i < days && out.length < 20; i++) {
+    const wd = cur.getUTCDay()
+    if (wd !== 0 && wd !== 6) out.push(cur.toISOString().slice(0, 10))
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return out
+}
+
+async function fetchNasdaqEarningsDay(iso: string): Promise<EarningItem[]> {
+  const inner = `https://api.nasdaq.com/api/calendar/earnings?date=${iso}`
+  const res = await fetch(`https://r.jina.ai/${inner}`, { headers: { Accept: 'text/plain' } })
+  if (!res.ok) return []
+  const text = await res.text()
+  const i = text.indexOf('{"data"')
+  if (i < 0) return []
+  const json = JSON.parse(text.slice(i, text.lastIndexOf('}') + 1)) as {
+    data?: { rows?: Array<{ symbol?: string; name?: string; epsForecast?: string }> }
+  }
+  const rows = json.data?.rows ?? []
+  const items: EarningItem[] = []
+  for (const row of rows) {
+    const sym = String(row.symbol || '').trim().toUpperCase()
+    if (!sym) continue
+    items.push({
+      sym,
+      name: String(row.name || sym).trim(),
+      date: `${iso}T20:00:00.000Z`,
+      epsEst: parseEps(row.epsForecast),
+      revenueEst: null,
+      price: null,
+      changePct: null,
+    })
+  }
+  return items
+}
+
 async function fetchEarnings(weeks: number): Promise<EarningItem[]> {
   try {
     const res = await fetch(`${getApiBase()}/api/earnings?weeks=${weeks}`)
@@ -83,8 +129,20 @@ async function fetchEarnings(weeks: number): Promise<EarningItem[]> {
       const json = await res.json() as { earnings?: EarningItem[] }
       if (json.earnings?.length) return json.earnings
     }
-  } catch { /* live only — never invent earnings */ }
-  return []
+  } catch { /* Nasdaq calendar next */ }
+  try {
+    const days = weekdaysAhead(weeks * 7 + 3)
+    const batches: EarningItem[] = []
+    for (let i = 0; i < days.length; i += 4) {
+      const slice = days.slice(i, i + 4)
+      const part = await Promise.all(slice.map((d) => fetchNasdaqEarningsDay(d).catch(() => [] as EarningItem[])))
+      batches.push(...part.flat())
+    }
+    batches.sort((a, b) => a.date.localeCompare(b.date) || a.sym.localeCompare(b.sym))
+    return batches.slice(0, 80)
+  } catch {
+    return []
+  }
 }
 
 function fmtRevenue(n: number | null, compact: boolean): string {
