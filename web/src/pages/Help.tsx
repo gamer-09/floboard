@@ -62,7 +62,7 @@ const SECTIONS: HelpSection[] = [
       { q: 'Theme', a: 'Dark, Light, or OLED. You can also cycle themes from the sun icon in the top bar.' },
       { q: 'Price decimals and compact numbers', a: 'Decimals (2 or 4) apply to live prices. Compact on shortens large figures. Compact off shows the full live value — never a rounded placeholder.' },
       { q: 'Extended hours', a: 'When on, stock rows use pre-market or after-hours prints if Yahoo sent them. Otherwise the regular session price stays.' },
-      { q: 'Notifications', a: 'Settings → Notifications. Turn on the master switch — the browser asks permission. Then pick: Portfolio (a holding crosses your day-move threshold), Market moves (S&P 500, Nasdaq, Dow, or Bitcoin ≥ 1.5% on the session), and News (a new top Yahoo headline). Use Send test to confirm the banner. Alerts stay in this browser. No email, no phone number.' },
+      { q: 'Notifications', a: 'Settings → Notifications. Enable turns on in-app banners on phone, tablet, and PC. Lock-screen banners need the browser permission. On iPhone, Add to Home Screen first, then allow notifications. Portfolio = holding crosses your day-move threshold. Market = S&P, Nasdaq, Dow, or Bitcoin ≥ 1.5%. News = new top Yahoo headline. Send test to confirm. No email, no phone number.' },
       { q: 'Reset settings', a: 'Restores preferences. Watchlist and portfolio are not wiped unless you use those specific buttons.' },
     ],
   },

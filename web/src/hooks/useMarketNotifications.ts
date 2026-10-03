@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { getApiBase } from '../utils/apiBase'
-import { areNotificationsSupported, sendLocalNotification } from '../utils/notifications'
+import { sendLocalNotification } from '../utils/notifications'
 
 const MAJOR = [
   { sym: '^GSPC', name: 'S&P 500' },
@@ -52,8 +52,6 @@ export function useMarketNotifications() {
   useEffect(() => {
     if (!lastUpdated) return
     if (!settings.notificationsEnabled) return
-    if (!areNotificationsSupported()) return
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
 
     const today = utcDay()
     if (dayRef.current !== today) {

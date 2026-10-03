@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { OptionGroup, Toggle } from '../components/ui'
 import { useSettings, type AlertThreshold, type AppTheme, type EarningsWindow, type NewsCount, type PriceDecimals, type RefreshInterval, type RiskProfile, type WatchlistSort } from '../context/SettingsContext'
-import { areNotificationsSupported, notificationPermission, requestNotificationPermissions, sendLocalNotification } from '../utils/notifications'
+import { isStandalonePwa, notificationPermission, osNotificationsSupported, requestNotificationPermissions, sendLocalNotification } from '../utils/notifications'
 
 function SettingRow({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -27,8 +27,9 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 export default function SettingsScreen() {
   const { settings, updateSetting, triggerClearChat, triggerClearWatchlist, triggerClearPortfolio, resetAllSettings } = useSettings()
   const [notifError, setNotifError] = useState('')
-  const supported = areNotificationsSupported()
+  const osOk = osNotificationsSupported()
   const perm = notificationPermission()
+  const pwa = isStandalonePwa()
 
   const toggleNotifications = async (on: boolean) => {
     setNotifError('')
@@ -36,21 +37,23 @@ export default function SettingsScreen() {
       updateSetting('notificationsEnabled', false)
       return
     }
-    if (!supported) {
-      setNotifError('This browser does not support notifications.')
-      return
-    }
-    const ok = await requestNotificationPermissions()
-    if (!ok) {
-      setNotifError('Allow notifications in the browser prompt (or site settings) to turn this on.')
-      updateSetting('notificationsEnabled', false)
-      return
-    }
     updateSetting('notificationsEnabled', true)
+    if (osOk) {
+      const granted = await requestNotificationPermissions()
+      if (!granted) {
+        setNotifError(
+          pwa
+            ? 'In-app alerts are on. Allow notifications in site settings for lock-screen banners.'
+            : 'In-app alerts are on. For lock-screen banners, allow the permission prompt — iPhone also needs Add to Home Screen.',
+        )
+      }
+    } else {
+      setNotifError('In-app alerts are on. This browser has no lock-screen API; banners appear inside FloBoard.')
+    }
   }
 
   const sendTest = () => {
-    sendLocalNotification(
+    void sendLocalNotification(
       'FloBoard test alert',
       'Notifications are working in this browser. Portfolio, market, and news alerts will use this same channel.',
       { tag: 'floboard-test', href: '#/settings' },
@@ -138,18 +141,13 @@ export default function SettingsScreen() {
       </Block>
 
       <Block title="Notifications">
-        {!supported && (
-          <div className="muted" style={{ padding: '12px 16px', whiteSpace: 'normal' }}>
-            This browser cannot show notifications. Try Chrome, Firefox, Edge, or Safari on a device that allows them.
-          </div>
-        )}
-        {perm === 'denied' && (
-          <div className="muted" style={{ padding: '12px 16px', whiteSpace: 'normal' }}>
-            Notifications are blocked for this site. Allow them in the browser’s site settings, then turn the switch on again.
-          </div>
-        )}
-        <SettingRow label="Enable notifications" desc="Asks this browser for permission. Alerts stay on this device — no email, no phone number.">
-          <Toggle checked={settings.notificationsEnabled} onChange={(v) => { void toggleNotifications(v) }} disabled={!supported} />
+        <div className="muted" style={{ padding: '12px 16px', whiteSpace: 'normal' }}>
+          Alerts show as a banner inside FloBoard on phone, tablet, and PC. Lock-screen banners need this browser’s permission
+          {osOk && perm === 'denied' ? ' — currently blocked in site settings.' : '.'}
+          {!pwa ? ' On iPhone, Add to Home Screen for lock-screen banners.' : ''}
+        </div>
+        <SettingRow label="Enable notifications" desc="Turns on in-app banners. Also asks for lock-screen permission when the device supports it. No email, no phone number.">
+          <Toggle checked={settings.notificationsEnabled} onChange={(v) => { void toggleNotifications(v) }} />
         </SettingRow>
         <SettingRow label="Portfolio moves" desc="Alert when a simulated holding’s day change crosses the threshold below.">
           <Toggle checked={settings.notifyPortfolio} onChange={(v) => updateSetting('notifyPortfolio', v)} disabled={!settings.notificationsEnabled} />
@@ -160,12 +158,12 @@ export default function SettingsScreen() {
         <SettingRow label="Breaking news" desc="Alert when Yahoo posts a new top market headline.">
           <Toggle checked={settings.notifyNews} onChange={(v) => updateSetting('notifyNews', v)} disabled={!settings.notificationsEnabled} />
         </SettingRow>
-        {settings.notificationsEnabled && supported && perm === 'granted' && (
-          <SettingRow label="Test alert" desc="Sends one real notification now so you can confirm the browser shows it.">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={sendTest}>Send test</button>
+        {settings.notificationsEnabled && (
+          <SettingRow label="Test alert" desc="Sends one banner now (and a lock-screen notice if permission was granted).">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void sendTest() }}>Send test</button>
           </SettingRow>
         )}
-        {notifError && <div className="lookup-err" style={{ margin: '8px 16px 12px' }}>{notifError}</div>}
+        {notifError && <div className="lookup-err" style={{ margin: '8px 16px 12px', whiteSpace: 'normal' }}>{notifError}</div>}
       </Block>
 
       <Block title="Portfolio alerts">

@@ -219,13 +219,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="shell">
       {open && <div className="backdrop" onClick={() => setOpen(false)} />}
       <aside className={`sidebar ${open ? 'open' : ''}`}>
-        <NavLink to="/markets" className="brand">
+        <div className="sidebar-head">
+          <NavLink to="/markets" className="brand">
           <div className="brand-mark"><LogoMark /></div>
           <div>
             <div className="brand-name">FloBoard</div>
             <div className="brand-tag">Live markets</div>
           </div>
         </NavLink>
+          <button type="button" className="icon-btn sidebar-close" onClick={() => setOpen(false)} aria-label="Close menu">
+            ×
+          </button>
+        </div>
         <nav className="nav">
           {NAV.map((g) => (
             <div key={g.group}>
@@ -287,6 +292,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className={`content ${isChat ? 'no-pad' : ''}`}>{children}</main>
+        <nav className="tabbar" aria-label="Primary">
+          {[
+            { to: '/markets', label: 'Markets', icon: 'markets' },
+            { to: '/crypto', label: 'Crypto', icon: 'crypto' },
+            { to: '/watchlist', label: 'Watch', icon: 'watchlist' },
+            { to: '/advisor', label: 'FloAI', icon: 'advisor' },
+          ].map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.to === '/markets'}
+              className={({ isActive }) => `tabbar-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon name={t.icon} />
+              <span>{t.label}</span>
+            </NavLink>
+          ))}
+          <button type="button" className="tabbar-item" onClick={() => setOpen(true)}>
+            <Icon name="settings" />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import Settings from './pages/Settings'
 import Watchlist from './pages/Watchlist'
 import { canonicalPath, normalizePath } from './utils/routes'
 import { useMarketNotifications } from './hooks/useMarketNotifications'
+import Toasts from './components/Toasts'
 
 function AppRoutes() {
   const loc = useLocation()
@@ -87,6 +88,7 @@ export default function App() {
       <AppShell>
         <AppRoutes />
       </AppShell>
+      <Toasts />
     </>
   )
 }
