@@ -124,8 +124,6 @@ const FALLBACK_PRICES: Record<string, { price: number; changePct: number; change
   'XPT/USD': { price: 1615.00, changePct: -0.25, change: -4.10, name: 'Platinum Spot / USD', currency: 'USD' },
   'XPDUSD=X': { price: 1265.00, changePct: 0.60, change: 7.50, name: 'Palladium Spot / USD', currency: 'USD' },
   'XPD/USD': { price: 1265.00, changePct: 0.60, change: 7.50, name: 'Palladium Spot / USD', currency: 'USD' },
-  'NI=F': { price: 16450.00, changePct: 0.85, change: 138.00, name: 'Nickel', currency: 'USD' },
-  'ZI=F': { price: 2875.50, changePct: 1.12, change: 31.80, name: 'Zinc', currency: 'USD' },
   '^IRX': { price: 4.52, changePct: 0.03, change: 0.001, name: '13-Week Treasury Yield', currency: 'USD' },
   '^TU': { price: 4.18, changePct: -0.02, change: -0.001, name: '2-Year Treasury Yield', currency: 'USD' },
   '^FVX': { price: 4.24, changePct: 0.01, change: 0.001, name: '5-Year Treasury Yield', currency: 'USD' },
@@ -143,7 +141,6 @@ const FALLBACK_PRICES: Record<string, { price: number; changePct: number; change
   'OFFICIAL-TRUMP-USD': { price: 67.81, changePct: 5.40, change: 3.48, name: 'Official Trump', currency: 'USD' },
   'ZS=F': { price: 1211.25, changePct: 0.35, change: 4.25, name: 'Soybean Futures', currency: 'USD' },
   'ZO=F': { price: 331.75, changePct: 0.75, change: 2.50, name: 'Oat Futures', currency: 'USD' },
-  'LBS=F': { price: 380.60, changePct: -1.10, change: -4.20, name: 'Lumber Futures', currency: 'USD' },
   '^NDX': { price: 27763.13, changePct: 0.45, change: 124.50, name: 'Nasdaq 100', currency: 'USD' },
   '000001.SS': { price: 3828.47, changePct: 0.40, change: 15.20, name: 'Shanghai Comp', currency: 'CNY' },
   '^MOVE': { price: 76.09, changePct: -1.45, change: -1.10, name: 'MOVE Index', currency: 'USD' },
@@ -212,61 +209,4 @@ export interface PricePoint {
   o?: number
   h?: number
   l?: number
-}
-
-function intHash(seed: number): number {
-  let t = (seed += 0x6d2b79f5)
-  t = Math.imul(t ^ (t >>> 15), t | 1)
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-}
-
-export function generateRealisticChart(symbol: string, range: string, basePrice?: number): PricePoint[] {
-  const sym = symbol.trim().toUpperCase()
-  const fallbackQuote = getFallbackQuote(sym)
-  const targetPrice = basePrice && isFinite(basePrice) && basePrice > 0 ? basePrice : fallbackQuote.regularMarketPrice || 100
-
-  let count = 30
-  let stepSec = 3600
-  if (range === '1d') { count = 24; stepSec = 300 }
-  else if (range === '1w' || range === '7d') { count = 28; stepSec = 3600 * 6 }
-  else if (range === '1mo') { count = 30; stepSec = 86400 }
-  else if (range === '3mo') { count = 45; stepSec = 86400 * 2 }
-  else if (range === '1y') { count = 52; stepSec = 86400 * 7 }
-  else { count = 60; stepSec = 86400 * 14 }
-
-  let seed = 0
-  const seedStr = `${sym}_${range}`
-  for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0
-
-  const drift = (intHash(seed) - 0.45) * 0.018
-  const dailyVol = sym.includes('=X') || sym.includes('/') || sym.startsWith('^') ? 0.003
-    : sym.endsWith('-USD') ? 0.018 : 0.012
-
-  const returns: number[] = []
-  for (let i = 0; i < count; i++) {
-    const r1 = intHash(seed + i * 7 + 1)
-    const r2 = intHash(seed + i * 7 + 2)
-    returns.push(drift / count + (r1 + r2 - 1.0) * dailyVol)
-  }
-
-  const startPrice = +(targetPrice * (1 - drift)).toFixed(4)
-  let currentPrice = startPrice > 0 ? startPrice : targetPrice * 0.95
-  const now = Math.floor(Date.now() / 1000)
-  const points: PricePoint[] = []
-
-  for (let i = 0; i < count; i++) {
-    const r3 = intHash(seed + i * 13 + 3)
-    const r4 = intHash(seed + i * 13 + 4)
-    const r5 = intHash(seed + i * 13 + 5)
-    const prevClose = i > 0 ? points[i - 1].c : currentPrice
-    const o = +(prevClose + (r3 - 0.5) * 0.002 * prevClose).toFixed(4)
-    currentPrice = +(o * (1 + returns[i])).toFixed(4)
-    if (i === count - 1) currentPrice = +targetPrice.toFixed(4)
-    const c = currentPrice
-    const h = +(Math.max(o, c) + Math.abs(c * dailyVol * r4 * 0.7)).toFixed(4)
-    const l = +(Math.min(o, c) - Math.abs(c * dailyVol * r5 * 0.7)).toFixed(4)
-    points.push({ t: now - (count - 1 - i) * stepSec, c, o, h, l })
-  }
-  return points
 }

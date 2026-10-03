@@ -1,4 +1,3 @@
-import { useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { isFallbackMcap } from '../utils/symbolFallbacks'
 import { fmt, fmtChg, fmtIndex, fmtMcap, fmtMoney, fmtPrice, fmtVol } from '../utils/format'
@@ -28,12 +27,3 @@ export function useFormat() {
   }
 }
 
-/** Hide placeholder market cap even outside the hook (rows that already have quote data). */
-export function useQuoteFormat() {
-  const f = useFormat()
-  const { data } = useMarket()
-  return {
-    ...f,
-    mcapOf: (sym: string) => f.mcap(data[sym]?.marketCap, sym),
-  }
-}
