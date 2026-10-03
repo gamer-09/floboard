@@ -3,6 +3,7 @@ import { useColors } from '../hooks/useColors'
 import { useMarket } from '../context/MarketContext'
 import { getApiBase } from '../utils/apiBase'
 import { getFallbackQuote, isStubHistory, resolveSymbolAlias, type PricePoint } from '../utils/symbolFallbacks'
+import { fetchYahooChartRelay } from '../utils/liveQuotes'
 
 async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]> {
   try {
@@ -10,10 +11,14 @@ async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]
     if (!res.ok) return []
     const json = await res.json() as { prices?: PricePoint[] }
     const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
-    if (prices.length < 2) return []
-    const fallback = getFallbackQuote(symbol)
-    if (isStubHistory(prices, fallback.regularMarketPrice)) return []
-    return prices
+    if (prices.length >= 2) {
+      const fallback = getFallbackQuote(symbol)
+      if (!isStubHistory(prices, fallback.regularMarketPrice)) return prices
+    }
+  } catch { /* relay next */ }
+  try {
+    const { prices } = await fetchYahooChartRelay(resolveSymbolAlias(symbol), range === '1d' ? '1d' : '1mo', range === '1d' ? '5m' : '1d')
+    return prices.length >= 2 ? prices : []
   } catch {
     return []
   }

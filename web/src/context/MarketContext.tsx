@@ -3,6 +3,7 @@ import { ALL_SYMBOLS, BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, MACRO, SECTOR
 import { useSettings } from './SettingsContext'
 import { getApiBase, resolveApiBase } from '../utils/apiBase'
 import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap, isStubHistory } from '../utils/symbolFallbacks'
+import { fetchGeckoUsdQuote, fetchYahooChartRelay } from '../utils/liveQuotes'
 
 export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice, fmtMoney, fmtVol, fmtIndex } from '../utils/format'
 
@@ -311,6 +312,21 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       const q = json.results?.[0]
       if (q && q.regularMarketPrice > 0 && !isSyntheticQuote(q)) return { ...q, symbol: sym }
     }
+  } catch { /* ignore */ }
+  try {
+    const { quote, prices } = await fetchYahooChartRelay(target, '5d', '1d')
+    if (quote && quote.regularMarketPrice > 0) {
+      if (prices.length >= 2) {
+        const last = prices[prices.length - 1].c
+        const prev = prices[Math.max(0, prices.length - 2)].c
+        return { ...quote, symbol: sym, regularMarketPrice: last || quote.regularMarketPrice, regularMarketPreviousClose: prev }
+      }
+      return { ...quote, symbol: sym }
+    }
+  } catch { /* ignore */ }
+  try {
+    const g = await fetchGeckoUsdQuote(sym)
+    if (g && g.regularMarketPrice > 0) return { ...g, symbol: sym }
   } catch { /* ignore */ }
   return null
 }

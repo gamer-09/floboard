@@ -237,6 +237,57 @@ function quoteFromChartMeta(meta: Record<string, unknown>, requested: string): Y
   };
 }
 
+function parseYahooChartJson(
+  json: unknown,
+  requested: string,
+): { prices: Array<{ t: number; c: number }>; quote: YahooLiveQuote | null } {
+  const row = (json as { chart?: { result?: Array<{
+    meta?: Record<string, unknown>
+    timestamp?: number[]
+    indicators?: { quote?: Array<{ close?: Array<number | null> }> }
+  }> } })?.chart?.result?.[0];
+  if (!row) return { prices: [], quote: null };
+  const quote = row.meta ? quoteFromChartMeta(row.meta, requested) : null;
+  const ts = row.timestamp ?? [];
+  const close = row.indicators?.quote?.[0]?.close ?? [];
+  const prices: Array<{ t: number; c: number }> = [];
+  for (let i = 0; i < ts.length; i++) {
+    const c = close[i];
+    if (typeof c === "number" && Number.isFinite(c) && c > 0) prices.push({ t: ts[i], c });
+  }
+  return { prices, quote };
+}
+
+function extractChartJson(text: string): unknown | null {
+  const i = text.indexOf('{"chart"');
+  if (i < 0) return null;
+  const slice = text.slice(i, text.lastIndexOf("}") + 1);
+  try {
+    return JSON.parse(slice);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYahooChartViaRelay(
+  sym: string,
+  range: string,
+  interval: string,
+): Promise<{ prices: Array<{ t: number; c: number }>; quote: YahooLiveQuote | null }> {
+  const inner = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${interval}&range=${range}`;
+  try {
+    const res = await fetch(`https://r.jina.ai/${inner}`, {
+      headers: { "User-Agent": UA, Accept: "text/plain" },
+    });
+    if (!res.ok) return { prices: [], quote: null };
+    const json = extractChartJson(await res.text());
+    if (!json) return { prices: [], quote: null };
+    return parseYahooChartJson(json, sym);
+  } catch {
+    return { prices: [], quote: null };
+  }
+}
+
 export async function fetchYahooChart(
   sym: string,
   range: string,
@@ -281,33 +332,26 @@ export async function fetchYahooChart(
       try {
         const res = crumbEnabled() && jar.size
           ? await request(url, jar)
-          : await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+          : await fetch(url, {
+              headers: {
+                "User-Agent": UA,
+                Accept: "application/json",
+                "Accept-Language": "en-US,en;q=0.9",
+              },
+            });
         if (!res.ok) continue;
-        const json = (await res.json()) as {
-          chart?: {
-            result?: Array<{
-              meta?: Record<string, unknown>;
-              timestamp?: number[];
-              indicators?: { quote?: Array<{ close?: Array<number | null> }> };
-            }>;
-          };
-        };
-        const row = json.chart?.result?.[0];
-        if (!row) continue;
-        if (!quote && row.meta) quote = quoteFromChartMeta(row.meta, sym);
-        const ts = row.timestamp ?? [];
-        const close = row.indicators?.quote?.[0]?.close ?? [];
-        const prices: Array<{ t: number; c: number }> = [];
-        for (let i = 0; i < ts.length; i++) {
-          const c = close[i];
-          if (typeof c === "number" && Number.isFinite(c) && c > 0) prices.push({ t: ts[i], c });
-        }
-        if (prices.length >= 2) return { prices, quote };
+        const parsed = parseYahooChartJson(await res.json(), sym);
+        if (parsed.quote && !quote) quote = parsed.quote;
+        if (parsed.prices.length >= 2) return parsed;
       } catch {
         /* try next host/range */
       }
     }
   }
+
+  const relay = await fetchYahooChartViaRelay(sym, attempts[0]?.range ?? "5d", attempts[0]?.interval ?? "1d");
+  if (relay.prices.length >= 2) return relay;
+  if (relay.quote && !quote) quote = relay.quote;
 
   if (quote) {
     const now = Math.floor(Date.now() / 1000);
