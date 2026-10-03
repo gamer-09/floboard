@@ -33,6 +33,9 @@ const SYMBOL_ALIASES: Record<string, string> = {
   "USDE": "USDE29470-USD",
   "COMP-USD": "COMP5692-USD",
   "COMP": "COMP5692-USD",
+  "LBS=F": "LBR=F",
+  "NI=F": "NICK.L",
+  "ZI=F": "ZNC=F",
 };
 
 const FALLBACK_PRICES: Record<

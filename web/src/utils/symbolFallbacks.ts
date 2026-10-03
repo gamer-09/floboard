@@ -35,6 +35,9 @@ export const SYMBOL_ALIASES: Record<string, string> = {
   'POL': 'MATIC-USD',
   'MATIC': 'MATIC-USD',
   '^TU': '^FVX',
+  'LBS=F': 'LBR=F',
+  'NI=F': 'NICK.L',
+  'ZI=F': 'ZNC=F',
 }
 
 export function resolveSymbolAlias(sym: string): string {

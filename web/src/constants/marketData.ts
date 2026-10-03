@@ -176,11 +176,11 @@ export const COMMODITIES = [
   { sym: 'SB=F', label: 'Sugar', unit: 'USD/lb' },
   { sym: 'CC=F', label: 'Cocoa', unit: 'USD/MT' },
   { sym: 'CT=F', label: 'Cotton', unit: 'USD/lb' },
-  { sym: 'LBS=F', label: 'Lumber', unit: 'USD/1000 bd ft' },
+  { sym: 'LBR=F', label: 'Lumber', unit: 'USD/1000 bd ft' },
   { sym: 'HG=F', label: 'Copper', unit: 'USD/lb' },
   { sym: 'ALI=F', label: 'Aluminum', unit: 'USD/MT' },
-  { sym: 'NI=F', label: 'Nickel', unit: 'USD/MT' },
-  { sym: 'ZI=F', label: 'Zinc', unit: 'USD/MT' },
+  { sym: 'NICK.L', label: 'Nickel', unit: 'USD' },
+  { sym: 'ZNC=F', label: 'Zinc', unit: 'USD/MT' },
 ]
 
 export const FOREX = [

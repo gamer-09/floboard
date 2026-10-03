@@ -62,6 +62,7 @@ const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (
 const FIRST_PAINT = [
   '^GSPC', '^IXIC', '^DJI', '^NDX', '^RUT', '^VIX',
   'BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F', 'DX-Y.NYB', '^TNX', '^IRX',
+  'LBR=F', 'ZNC=F', 'NICK.L', 'HG=F', 'ALI=F',
 ]
 
 const SECOND_WAVE = [
@@ -220,9 +221,10 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boo
 }
 
 async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
+  const target = resolveSymbolAlias(sym)
   try {
     const res = await fetchWithTimeout(
-      `${apiBase()}/api/market/history?symbol=${encodeURIComponent(sym)}&range=7d`,
+      `${apiBase()}/api/market/history?symbol=${encodeURIComponent(target)}&range=7d`,
       {},
       8000,
     )

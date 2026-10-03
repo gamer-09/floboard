@@ -7,8 +7,8 @@ import { useFormat } from '../hooks/useFormat'
 const ROWS = [
   { sym: 'HG=F', name: 'Copper', unit: 'USD/lb', decimals: 3 },
   { sym: 'ALI=F', name: 'Aluminum', unit: 'USD/MT', decimals: 2 },
-  { sym: 'NI=F', name: 'Nickel', unit: 'USD/MT', decimals: 2 },
-  { sym: 'ZI=F', name: 'Zinc', unit: 'USD/MT', decimals: 2 },
+  { sym: 'NICK.L', name: 'Nickel', unit: 'USD', decimals: 2 },
+  { sym: 'ZNC=F', name: 'Zinc', unit: 'USD/MT', decimals: 2 },
   { sym: 'GC=F', name: 'Gold (safe haven)', unit: 'USD/oz', decimals: 2 },
 ]
 
@@ -18,7 +18,7 @@ export default function CopperScreen() {
   useEffect(() => { ensureSymbols(ROWS.map((r) => r.sym)) }, [ensureSymbols])
   const cu = data['HG=F']
   const al = data['ALI=F']
-  const ni = data['NI=F']
+  const ni = data['NICK.L']
   const au = data['GC=F']
 
   return (

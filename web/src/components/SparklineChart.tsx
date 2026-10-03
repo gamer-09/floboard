@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useColors } from '../hooks/useColors'
 import { useMarket } from '../context/MarketContext'
 import { getApiBase } from '../utils/apiBase'
-import { getFallbackQuote, type PricePoint } from '../utils/symbolFallbacks'
+import { getFallbackQuote, resolveSymbolAlias, type PricePoint } from '../utils/symbolFallbacks'
 
 async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]> {
   try {
-    const res = await fetch(`${getApiBase()}/api/market/history?symbol=${encodeURIComponent(symbol)}&range=${range}`)
+    const res = await fetch(`${getApiBase()}/api/market/history?symbol=${encodeURIComponent(resolveSymbolAlias(symbol))}&range=${range}`)
     if (!res.ok) return []
     const json = await res.json() as { prices?: PricePoint[] }
     const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
