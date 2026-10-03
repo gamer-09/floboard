@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
 import { EmptyState, SearchBox, Segmented } from '../components/ui'
 import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
-import { chgDir, fmtChg, isSyntheticQuote, useMarket, type QuoteData } from '../context/MarketContext'
+import { chgDir, fmtChg, isSyntheticQuote, sessionQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { useFormat } from '../hooks/useFormat'
 import { getApiBase } from '../utils/apiBase'
@@ -297,7 +297,8 @@ export default function WatchlistScreen() {
           {sorted.map(({ sym, name }) => {
             const d = data[sym]
             const live = hasLiveQuote(sym, d)
-            const chg = live ? (d?.regularMarketChangePercent ?? 0) : 0
+            const sess = live && d ? sessionQuote(d, settings.showExtendedHours) : null
+            const chg = sess ? sess.chg : 0
             const dir = live ? chgDir(chg) : 'flat'
             const col = dir === 'up' ? 'var(--gain)' : dir === 'dn' ? 'var(--loss)' : 'var(--t2)'
             const dec = decimals(sym)
@@ -319,10 +320,10 @@ export default function WatchlistScreen() {
                     {live ? <SparklineChart symbol={sym} range="7d" width={80} height={32} color={col} /> : null}
                   </div>
                   <div className="right">
-                    {live ? (
+                    {sess ? (
                       <>
-                        <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${price(d!.regularMarketPrice, dec)}`}</div>
-                        <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{fmtChg(chg)}</div>
+                        <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${price(sess.price, dec)}`}</div>
+                        <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{fmtChg(chg)}{sess.tag ? ` ${sess.tag}` : ''}</div>
                       </>
                     ) : (
                       <>

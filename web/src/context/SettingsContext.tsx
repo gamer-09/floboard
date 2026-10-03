@@ -15,10 +15,6 @@ export interface AppSettings {
   newsCount: NewsCount
   alertThreshold: AlertThreshold
   clearChatKey: number
-  notificationsEnabled: boolean
-  notifyPortfolio: boolean
-  notifyMarketMoves: boolean
-  notifyNews: boolean
   riskProfile: RiskProfile
   watchlistSort: WatchlistSort
   earningsWindow: EarningsWindow
@@ -38,10 +34,6 @@ const DEFAULT: AppSettings = {
   clearChatKey: 0,
   clearWatchlistKey: 0,
   clearPortfolioKey: 0,
-  notificationsEnabled: false,
-  notifyPortfolio: true,
-  notifyMarketMoves: true,
-  notifyNews: true,
   riskProfile: 'moderate',
   watchlistSort: 'change',
   earningsWindow: 4,
@@ -60,7 +52,6 @@ interface SettingsContextType {
   triggerClearWatchlist: () => void
   triggerClearPortfolio: () => void
   resetAllSettings: () => void
-  loaded: boolean
 }
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -70,7 +61,6 @@ const SettingsContext = createContext<SettingsContextType>({
   triggerClearWatchlist: () => {},
   triggerClearPortfolio: () => {},
   resetAllSettings: () => {},
-  loaded: false,
 })
 
 function loadSettings(): AppSettings {
@@ -86,7 +76,6 @@ function loadSettings(): AppSettings {
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
-  const [loaded, setLoaded] = useState(true)
 
   const updateSetting = useCallback(<K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings((prev) => {
@@ -119,7 +108,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSetting, triggerClearChat, triggerClearWatchlist, triggerClearPortfolio, resetAllSettings, loaded }}>
+    <SettingsContext.Provider value={{ settings, updateSetting, triggerClearChat, triggerClearWatchlist, triggerClearPortfolio, resetAllSettings }}>
       {children}
     </SettingsContext.Provider>
   )

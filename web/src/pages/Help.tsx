@@ -60,6 +60,8 @@ const SECTIONS: HelpSection[] = [
     id: 'settings', title: 'Settings', icon: '⚙', accent: 'var(--blue)',
     items: [
       { q: 'Theme', a: 'Dark, Light, or OLED. You can also cycle themes from the sun icon in the top bar.' },
+      { q: 'Price decimals and compact numbers', a: 'Decimals (2 or 4) apply to live prices. Compact on shortens large figures. Compact off shows the full live value — never a rounded placeholder.' },
+      { q: 'Extended hours', a: 'When on, stock rows use pre-market or after-hours prints if Yahoo sent them. Otherwise the regular session price stays.' },
       { q: 'Reset settings', a: 'Restores preferences. Watchlist and portfolio are not wiped unless you use those specific buttons.' },
     ],
   },

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { EmptyState } from '../components/ui'
 import { CRYPTOS, STOCKS } from '../constants/marketData'
-import { fmtChg, isSyntheticQuote, useMarket } from '../context/MarketContext'
+import { fmtChg, isSyntheticQuote, sessionQuote, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { useFormat } from '../hooks/useFormat'
 import { isKnownSymbol, keepYahooSymbols, verifySymbol } from '../utils/lookup'
@@ -117,7 +117,12 @@ export default function PortfolioScreen() {
     saveHoldings(next)
   }
 
-  const px = (h: Holding) => markPrice(h.symbol, data[h.symbol], h.avgPrice, isSyntheticQuote(data[h.symbol]))
+  const px = (h: Holding) => {
+    const q = data[h.symbol]
+    const live = Boolean(q) && (isKnownSymbol(h.symbol) || !isSyntheticQuote(q))
+    if (live && q) return sessionQuote(q, settings.showExtendedHours).price
+    return markPrice(h.symbol, q, h.avgPrice, isSyntheticQuote(q))
+  }
   const totalValue = holdings.reduce((sum, h) => sum + px(h) * h.shares, 0)
   const totalCost = holdings.reduce((sum, h) => sum + h.avgPrice * h.shares, 0)
   const totalPnl = totalValue - totalCost
@@ -204,13 +209,14 @@ export default function PortfolioScreen() {
         {holdings.map((h) => {
           const d = data[h.symbol]
           const live = Boolean(d) && (isKnownSymbol(h.symbol) || !isSyntheticQuote(d))
-          const price = live ? d!.regularMarketPrice : h.avgPrice
+          const sess = live && d ? sessionQuote(d, settings.showExtendedHours) : null
+          const price = sess ? sess.price : live ? d!.regularMarketPrice : h.avgPrice
           const value = price * h.shares
           const cost = h.avgPrice * h.shares
           const pnl = value - cost
           const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
           const alloc = totalValue > 0 ? (value / totalValue) * 100 : 0
-          const day = live ? (d!.regularMarketChangePercent ?? 0) : 0
+          const day = sess ? sess.chg : live ? (d!.regularMarketChangePercent ?? 0) : 0
           const dayCol = live ? (day > 0 ? 'var(--gain)' : day < 0 ? 'var(--loss)' : 'var(--amber)') : 'var(--amber)'
           const alerted = settings.alertThreshold > 0 && Math.abs(day) >= settings.alertThreshold
           return (

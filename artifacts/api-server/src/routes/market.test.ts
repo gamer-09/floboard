@@ -81,36 +81,27 @@ describe('GET /api/market', () => {
     expect(res.body.results[0].symbol).toBe('BRK-B');
   });
 
-  it('falls back to simulated quotes when Yahoo Finance fails for a symbol', async () => {
+  it('omits a symbol when Yahoo Finance fails instead of inventing a price', async () => {
     quoteMock.mockRejectedValue(new Error('Yahoo Finance rate limited'));
 
     const res = await request(app).get('/api/market?symbols=AAPL,MSFT');
     expect(res.status).toBe(200);
-    expect(res.body.results).toHaveLength(2);
-
-    for (const q of res.body.results) {
-      expect(['AAPL', 'MSFT']).toContain(q.symbol);
-      // Fallback quotes must still expose the same numeric contract
-      expect(typeof q.regularMarketPrice).toBe('number');
-      expect(Number.isFinite(q.regularMarketPrice)).toBe(true);
-      expect(typeof q.regularMarketChangePercent).toBe('number');
-      expect(typeof q.regularMarketPreviousClose).toBe('number');
-    }
+    expect(res.body.results).toEqual([]);
   });
 
-  it('mixes real and fallback quotes when only some lookups fail', async () => {
+  it('returns only live quotes when some lookups fail', async () => {
     quoteMock
       .mockResolvedValueOnce(makeQuote('AAPL'))
       .mockRejectedValueOnce(new Error('boom'));
 
     const res = await request(app).get('/api/market?symbols=AAPL,NVDA');
     expect(res.status).toBe(200);
-    expect(res.body.results).toHaveLength(2);
+    expect(res.body.results).toHaveLength(1);
 
     const aapl = res.body.results.find((r: { symbol: string }) => r.symbol === 'AAPL');
     const nvda = res.body.results.find((r: { symbol: string }) => r.symbol === 'NVDA');
     expect(aapl.regularMarketPrice).toBe(150.25);
-    expect(Number.isFinite(nvda.regularMarketPrice)).toBe(true);
+    expect(nvda).toBeUndefined();
   });
 
   it('caps the number of symbols at 200', async () => {

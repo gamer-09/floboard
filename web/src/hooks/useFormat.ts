@@ -16,7 +16,8 @@ export function useFormat() {
     decimals,
     fmt,
     fmtChg,
-    price: (n: number | null | undefined, d?: number) => fmtPrice(n, d ?? decimals, compact),
+    price: (n: number | null | undefined, d?: number) =>
+      fmtPrice(n, d == null ? decimals : Math.max(d, decimals), compact),
     index: (n: number | null | undefined) => fmtIndex(n, compact),
     mcap: (v: number | null | undefined, sym?: string) => {
       if (sym && isFallbackMcap(sym, v ?? 0)) return '—'

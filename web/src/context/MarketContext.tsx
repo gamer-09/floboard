@@ -194,7 +194,7 @@ async function fetchMcapMap(symbols: string[]): Promise<Record<string, number>> 
   return out
 }
 
-async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boolean }> {
+async function fetchOneChart(sym: string): Promise<{ quote: QuoteData | null; live: boolean }> {
   const targetSym = resolveSymbolAlias(sym)
   try {
     const res = await fetchWithTimeout(
@@ -202,10 +202,10 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boo
       { headers: { 'User-Agent': NATIVE_UA, Accept: 'application/json' } },
       10000,
     )
-    if (!res.ok) return { quote: getFallbackQuote(sym), live: false }
+    if (!res.ok) return { quote: null, live: false }
     const json = await res.json() as { chart?: { result?: Array<{ meta?: Record<string, unknown> }> } }
     const meta = json?.chart?.result?.[0]?.meta as Record<string, number & string> | undefined
-    if (!meta?.regularMarketPrice) return { quote: getFallbackQuote(sym), live: false }
+    if (!meta?.regularMarketPrice) return { quote: null, live: false }
 
     const price = meta.regularMarketPrice as number
     const prev = (meta.chartPreviousClose ?? meta.previousClose ?? price) as number
@@ -228,10 +228,14 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boo
       fiftyTwoWeekHigh: (meta.fiftyTwoWeekHigh as number) ?? undefined,
       fiftyTwoWeekLow: (meta.fiftyTwoWeekLow as number) ?? undefined,
       marketCap: (typeof meta.marketCap === 'number' && meta.marketCap > 0) ? meta.marketCap as number : 0,
+      preMarketPrice: (meta.preMarketPrice as number) ?? undefined,
+      preMarketChangePercent: (meta.preMarketChangePercent as number) ?? undefined,
+      postMarketPrice: (meta.postMarketPrice as number) ?? undefined,
+      postMarketChangePercent: (meta.postMarketChangePercent as number) ?? undefined,
     }
     return { quote, live: true }
   } catch {
-    return { quote: getFallbackQuote(sym), live: false }
+    return { quote: null, live: false }
   }
 }
 
@@ -244,12 +248,20 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       8000,
     )
     if (res.ok) {
-      const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
+      const json = await res.json() as {
+        prices?: Array<{ t: number; c: number }>
+        marketCap?: number
+        shortName?: string
+        volume?: number
+        preMarketPrice?: number
+        preMarketChangePercent?: number
+        postMarketPrice?: number
+        postMarketChangePercent?: number
+      }
       const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
       const last = prices[prices.length - 1]
       const stub = isStubHistory(prices, getFallbackQuote(sym).regularMarketPrice)
       if (prices.length >= 2 && last && !stub) {
-        const fallback = getFallbackQuote(sym)
         const targetT = last.t - 24 * 3600
         let prev = prices[0].c
         for (let i = prices.length - 1; i >= 0; i--) {
@@ -267,9 +279,8 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
           : 0
         return {
           symbol: sym,
-          shortName: json.shortName || fallback.shortName,
-          quoteType: fallback.quoteType,
-          currency: fallback.currency,
+          shortName: json.shortName || undefined,
+          currency: 'USD',
           regularMarketPrice: last.c,
           regularMarketChangePercent: changePct,
           regularMarketChange: change,
@@ -278,13 +289,17 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
           regularMarketDayLow: Math.min(...window),
           regularMarketVolume: typeof json.volume === 'number' && json.volume > 0 && json.volume !== 1_000_000 ? json.volume : 0,
           marketCap: mcap,
+          preMarketPrice: json.preMarketPrice,
+          preMarketChangePercent: json.preMarketChangePercent,
+          postMarketPrice: json.postMarketPrice,
+          postMarketChangePercent: json.postMarketChangePercent,
         }
       }
     }
   } catch { /* try Yahoo chart next */ }
   try {
     const { quote, live } = await fetchOneChart(sym)
-    if (live && quote.regularMarketPrice > 0 && !isSyntheticQuote(quote)) return quote
+    if (live && quote && quote.regularMarketPrice > 0 && !isSyntheticQuote(quote)) return quote
   } catch { /* ignore */ }
   return null
 }
