@@ -59,15 +59,20 @@ function apiBase() {
 const YF_CHART = 'https://query2.finance.yahoo.com/v8/finance/chart'
 const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
 
-const PRIORITY_SYMBOLS = [
+const FIRST_PAINT = [
+  '^GSPC', '^IXIC', '^DJI', '^NDX', '^RUT', '^VIX',
+  'BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F', 'DX-Y.NYB', '^TNX', '^IRX',
+]
+
+const SECOND_WAVE = [
   ...INDICES.map((i) => i.sym),
   ...STOCKS.map((s) => s.sym),
-  ...SECTORS.map((s) => s.sym),
   ...BONDS.map((b) => b.sym),
   ...MACRO.map((m) => m.sym),
   ...COMMODITIES.map((c) => c.sym),
-  ...CRYPTOS.slice(0, 40).map((c) => c.sym),
-  ...FOREX.slice(0, 24).map((f) => f.sym),
+  ...SECTORS.map((s) => s.sym),
+  ...CRYPTOS.slice(0, 20).map((c) => c.sym),
+  ...FOREX.slice(0, 16).map((f) => f.sym),
 ]
 
 function fetchWithTimeout(url: string, options: RequestInit = {}, ms = 15000): Promise<Response> {
@@ -173,27 +178,6 @@ async function fetchMcapMap(symbols: string[]): Promise<Record<string, number>> 
   return out
 }
 
-async function fetchViaProxy(symbols: string[]): Promise<QuoteData[] | null> {
-  try {
-    const res = await fetchWithTimeout(
-      `${apiBase()}/api/market?symbols=${encodeURIComponent(symbols.join(','))}`,
-      {},
-      15000,
-    )
-    if (!res.ok) return []
-    const json = await res.json() as { results: QuoteData[] }
-    return json.results ?? []
-  } catch (err: unknown) {
-    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
-    const isConnectionError =
-      msg.includes('failed to fetch') || msg.includes('networkerror') ||
-      msg.includes('econnrefused') || msg.includes('err_connection_refused') ||
-      msg.includes('aborted') || msg.includes('abort')
-    if (isConnectionError) return null
-    return []
-  }
-}
-
 async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boolean }> {
   const targetSym = resolveSymbolAlias(sym)
   try {
@@ -235,28 +219,12 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData; live: boo
   }
 }
 
-async function fetchChartBatch(symbols: string[], concurrency = 8): Promise<{ results: QuoteData[]; hadNetworkSuccess: boolean }> {
-  const results: QuoteData[] = []
-  let hadNetworkSuccess = false
-  for (let i = 0; i < symbols.length; i += concurrency) {
-    const slice = symbols.slice(i, i + concurrency)
-    const settled = await Promise.allSettled(slice.map(fetchOneChart))
-    for (const r of settled) {
-      if (r.status === 'fulfilled' && r.value) {
-        results.push(r.value.quote)
-        if (r.value.live) hadNetworkSuccess = true
-      }
-    }
-  }
-  return { results, hadNetworkSuccess }
-}
-
 async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
   try {
     const res = await fetchWithTimeout(
       `${apiBase()}/api/market/history?symbol=${encodeURIComponent(sym)}&range=7d`,
       {},
-      12000,
+      8000,
     )
     if (!res.ok) return null
     const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
@@ -296,52 +264,31 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       regularMarketVolume: typeof json.volume === 'number' && json.volume > 0 && json.volume !== 1_000_000 ? json.volume : 0,
       marketCap: mcap,
     }
-  } catch {
-    return null
-  }
+  } catch { /* try Yahoo chart next */ }
+  try {
+    const { quote, live } = await fetchOneChart(sym)
+    if (live && quote.regularMarketPrice > 0 && !isSyntheticQuote(quote)) return quote
+  } catch { /* ignore */ }
+  return null
 }
 
-async function hydrateQuotes(quotes: QuoteData[], concurrency = 6): Promise<{ results: QuoteData[]; live: number }> {
-  const out = quotes.slice()
-  const needIdx: number[] = []
-  out.forEach((q, i) => { if (isSyntheticQuote(q)) needIdx.push(i) })
-  let live = out.length - needIdx.length
-  for (let i = 0; i < needIdx.length; i += concurrency) {
-    const slice = needIdx.slice(i, i + concurrency)
-    const settled = await Promise.all(slice.map((idx) => quoteFromHistory(out[idx].symbol)))
-    settled.forEach((q, j) => {
-      if (q && !isSyntheticQuote(q)) {
-        out[slice[j]] = withExactMcap(q, out[slice[j]])
-        live++
-      }
-    })
-  }
-  return { results: out, live }
-}
-
-async function fetchBatch(symbols: string[]): Promise<{ results: QuoteData[]; hadNetworkSuccess: boolean }> {
-  let results: QuoteData[] | null = await fetchViaProxy(symbols)
-  let hadNetworkSuccess = false
-
-  if (results === null) {
-    const direct = await fetchChartBatch(symbols)
-    results = direct.results
-    hadNetworkSuccess = direct.hadNetworkSuccess
-  }
-
-  const foundMap = new Map<string, QuoteData>()
-  for (const q of results ?? []) foundMap.set(q.symbol, q)
-
-  const completeResults: QuoteData[] = []
-  for (const sym of symbols) {
-    const existing = foundMap.get(sym)
-    if (existing && existing.regularMarketPrice != null && isFinite(existing.regularMarketPrice)) {
-      completeResults.push(existing)
+async function hydrateSymbols(
+  symbols: string[],
+  concurrency: number,
+  onBatch: (live: QuoteData[]) => void,
+): Promise<number> {
+  const uniq = [...new Set(symbols.filter(Boolean))]
+  let live = 0
+  for (let i = 0; i < uniq.length; i += concurrency) {
+    const slice = uniq.slice(i, i + concurrency)
+    const settled = await Promise.all(slice.map((s) => quoteFromHistory(s)))
+    const batch = settled.filter((q): q is QuoteData => !!q && !isSyntheticQuote(q))
+    if (batch.length) {
+      live += batch.length
+      onBatch(batch)
     }
   }
-
-  hadNetworkSuccess = hadNetworkSuccess || completeResults.some((q) => !isSyntheticQuote(q))
-  return { results: completeResults, hadNetworkSuccess }
+  return live
 }
 
 export function MarketProvider({ children }: { children: React.ReactNode }) {
@@ -395,73 +342,48 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     loadingRef.current = true
     setLoading(true)
 
+    const onLive = (batch: QuoteData[]) => {
+      applyQuotes(batch)
+      setIsOnline(true)
+      setLastUpdated(new Date())
+      setServerError(null)
+    }
+
     try {
       const extra = readUserSymbols()
-      const symbols = [...new Set([...ALL_SYMBOLS, ...extra])]
-      const BATCH = 20
-      const allResults: QuoteData[] = []
-      let onlineCount = 0
-
-      for (let i = 0; i < symbols.length; i += BATCH) {
-        const batch = symbols.slice(i, i + BATCH)
-        const { results, hadNetworkSuccess } = await fetchBatch(batch)
-        allResults.push(...results)
-        if (hadNetworkSuccess) onlineCount++
-      }
-
-      const prev = dataRef.current
-      const map: Record<string, QuoteData> = { ...prev }
-      allResults.forEach((q) => {
-        if (!q?.symbol || q.regularMarketPrice == null || !isFinite(q.regularMarketPrice)) return
-        const old = prev[q.symbol]
-        if (isSyntheticQuote(q)) {
-          const mcap = !isFallbackMcap(q.symbol, q.marketCap) ? q.marketCap : 0
-          if (old && !isSyntheticQuote(old)) {
-            map[q.symbol] = mcap ? { ...old, marketCap: mcap } : old
-          }
-          return
-        }
-        map[q.symbol] = withExactMcap(q, old)
-      })
-
-      setData(map)
-      setLastUpdated(new Date())
-      const liveNow = Object.values(map).some((q) => !isSyntheticQuote(q))
-      setIsOnline(onlineCount > 0 || liveNow)
-      setServerError(null)
+      const first = [...new Set([...FIRST_PAINT, ...extra.slice(0, 12)])]
+      const liveFirst = await hydrateSymbols(first, 12, onLive)
       setRefreshKey((k) => k + 1)
       if (retryRef.current) { clearTimeout(retryRef.current); retryRef.current = null }
+      setLoading(false)
+      loadingRef.current = false
+      if (!liveFirst) setIsOnline(false)
 
-      const missingMcap = Object.values(map).filter((q) => wantsMcap(q.symbol) && isFallbackMcap(q.symbol, q.marketCap)).map((q) => q.symbol)
-      if (missingMcap.length) {
-        void fetchMcapMap(missingMcap).then((caps) => {
-          const patch: QuoteData[] = []
-          for (const [sym, mcap] of Object.entries(caps)) {
-            const prev = dataRef.current[sym]
-            if (prev && typeof mcap === 'number' && mcap > 0) patch.push({ ...prev, marketCap: mcap })
-          }
-          if (patch.length) applyQuotes(patch)
-        })
-      }
-
-      const priority = [...new Set([...PRIORITY_SYMBOLS, ...extra, ...ALL_SYMBOLS])]
-      const needHydrate = priority
-        .filter((s) => !map[s] || isSyntheticQuote(map[s]))
-        .map((s) => map[s] || getFallbackQuote(s))
-      if (needHydrate.length) {
-        void hydrateQuotes(needHydrate, 6).then((hydrated) => {
-          if (!hydrated.live) return
-          applyQuotes(hydrated.results.filter((q) => q && !isSyntheticQuote(q)))
-          setIsOnline(true)
-          setLastUpdated(new Date())
-        })
-      }
+      const have = new Set(Object.keys(dataRef.current))
+      const second = [...new Set([...SECOND_WAVE, ...extra])].filter((s) => !have.has(s))
+      void hydrateSymbols(second, 10, onLive).then(() => {
+        setRefreshKey((k) => k + 1)
+        const stillNeed = Object.values(dataRef.current)
+          .filter((q) => wantsMcap(q.symbol) && isFallbackMcap(q.symbol, q.marketCap))
+          .map((q) => q.symbol)
+        if (stillNeed.length) {
+          void fetchMcapMap(stillNeed).then((caps) => {
+            const patch: QuoteData[] = []
+            for (const [sym, mcap] of Object.entries(caps)) {
+              const prev = dataRef.current[sym]
+              if (prev && typeof mcap === 'number' && mcap > 0) patch.push({ ...prev, marketCap: mcap })
+            }
+            if (patch.length) applyQuotes(patch)
+          })
+        }
+        const loaded = new Set(Object.keys(dataRef.current))
+        const rest = ALL_SYMBOLS.filter((s) => !loaded.has(s))
+        if (rest.length) void hydrateSymbols(rest, 8, onLive)
+      })
     } catch {
-      setData((prev) => prev)
       setIsOnline(false)
       setLastUpdated(new Date())
       scheduleRetry(() => { loadData() })
-    } finally {
       setLoading(false)
       loadingRef.current = false
     }
@@ -475,19 +397,11 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       return !q || isSyntheticQuote(q)
     })
     if (!missing.length) return
-    void (async () => {
-      const { results } = await fetchBatch(missing)
-      applyQuotes(results)
-      const liveSyms = new Set(results.filter((q) => !isSyntheticQuote(q)).map((q) => q.symbol))
-      const stubs = missing
-        .filter((s) => !liveSyms.has(s))
-        .map((s) => results.find((q) => q.symbol === s) || getFallbackQuote(s))
-      if (stubs.length) {
-        const hydrated = await hydrateQuotes(stubs, 4)
-        applyQuotes(hydrated.results)
-        if (hydrated.live) setIsOnline(true)
-      }
-    })()
+    void hydrateSymbols(missing, 10, (batch) => {
+      applyQuotes(batch)
+      setIsOnline(true)
+      setLastUpdated(new Date())
+    })
   }, [applyQuotes])
 
   useEffect(() => {
