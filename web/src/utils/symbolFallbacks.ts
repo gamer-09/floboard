@@ -210,3 +210,36 @@ export interface PricePoint {
   h?: number
   l?: number
 }
+
+/**
+ * Old API stubs were 24/28/30 perfectly even bars (often ending on the
+ * hash fallback price). Real 7d hourly series for short cash sessions
+ * (Sensex, Nifty, Taiwan, …) can also be 28 points, but they have
+ * overnight gaps — those must be kept.
+ */
+export function isStubHistory(
+  prices: Array<{ t: number; c: number }>,
+  fallbackPrice?: number,
+): boolean {
+  if (prices.length < 2) return true
+  const n = prices.length
+  const last = prices[n - 1]?.c
+  const classic = n === 24 || n === 28 || n === 30
+  if (
+    classic &&
+    fallbackPrice != null &&
+    Number.isFinite(fallbackPrice) &&
+    Number.isFinite(last) &&
+    Math.abs(last - fallbackPrice) < 1e-3
+  ) {
+    return true
+  }
+  if (!classic) return false
+  const step = prices[1].t - prices[0].t
+  if (step <= 0) return true
+  let even = 0
+  for (let i = 1; i < n; i++) {
+    if (Math.abs(prices[i].t - prices[i - 1].t - step) <= 2) even++
+  }
+  return even >= n - 2
+}

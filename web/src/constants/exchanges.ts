@@ -50,33 +50,53 @@ const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4
 function pad(n: number) { return String(n).padStart(2, '0') }
 
 function fmtHm(h: number, m: number, hour12 = true): string {
-  if (!hour12) return `${pad(h)}:${pad(m)}`
-  const am = h < 12
-  const hr = h % 12 || 12
+  const hh = ((h % 24) + 24) % 24
+  if (!hour12) return `${pad(hh)}:${pad(m)}`
+  const am = hh < 12
+  const hr = hh % 12 || 12
   return `${hr}:${pad(m)} ${am ? 'AM' : 'PM'}`
 }
 
-/** Read wall-clock time in an IANA zone. hourCycle h23 so midnight is 00, not 24. */
-export function zonedClock(tz: string, now = new Date()): { h: number; m: number; wd: number; mins: number } {
+function weekdayIndex(raw: string): number {
+  const k = raw.replace(/\./g, '').trim()
+  if (k in WEEKDAY) return WEEKDAY[k]
+  return WEEKDAY[k.slice(0, 3)] ?? 0
+}
+
+/**
+ * Wall-clock in an IANA zone.
+ * hour12:false + hourCycle h23, then still fold 24→0 and AM/PM in case the
+ * engine ignores hourCycle (en-US on some browsers) and emits a 12-hour clock.
+ * Without that, 2:30 PM is read as 02:30 and cash sessions look closed.
+ */
+export function zonedClock(tz: string, now = new Date()): { h: number; m: number; wd: number; mins: number; tzName: string } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     weekday: 'short',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
+    hour12: false,
     hourCycle: 'h23',
+    timeZoneName: 'short',
   }).formatToParts(now)
   const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? ''
   let h = parseInt(get('hour'), 10)
-  if (!Number.isFinite(h) || h === 24) h = 0
   const m = parseInt(get('minute'), 10) || 0
-  const wd = WEEKDAY[get('weekday')] ?? 0
-  return { h, m, wd, mins: h * 60 + m }
+  const period = get('dayPeriod').toUpperCase()
+  if (period.includes('PM') && Number.isFinite(h) && h < 12) h += 12
+  if (period.includes('AM') && h === 12) h = 0
+  if (!Number.isFinite(h) || h === 24) h = 0
+  if (h > 23) h %= 24
+  const wd = weekdayIndex(get('weekday'))
+  return { h, m, wd, mins: h * 60 + m, tzName: get('timeZoneName') }
 }
 
 export function getLocalTimeStr(tz: string, now = new Date()): string {
   try {
-    const { h, m } = zonedClock(tz, now)
-    return fmtHm(h, m)
+    const { h, m, tzName } = zonedClock(tz, now)
+    const clock = fmtHm(h, m)
+    const abb = tzName && !/^GMT/i.test(tzName) ? ` ${tzName}` : ''
+    return clock + abb
   } catch { return '' }
 }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useColors } from '../hooks/useColors'
 import { useMarket } from '../context/MarketContext'
 import { getApiBase } from '../utils/apiBase'
-import { getFallbackQuote, resolveSymbolAlias, type PricePoint } from '../utils/symbolFallbacks'
+import { getFallbackQuote, isStubHistory, resolveSymbolAlias, type PricePoint } from '../utils/symbolFallbacks'
 
 async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]> {
   try {
@@ -12,8 +12,7 @@ async function fetchHistory(symbol: string, range: string): Promise<PricePoint[]
     const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
     if (prices.length < 2) return []
     const fallback = getFallbackQuote(symbol)
-    const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
-    if (syntheticLen && Math.abs(prices[prices.length - 1].c - fallback.regularMarketPrice) < 1e-6) return []
+    if (isStubHistory(prices, fallback.regularMarketPrice)) return []
     return prices
   } catch {
     return []

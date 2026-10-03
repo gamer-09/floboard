@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { ALL_SYMBOLS, BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, MACRO, SECTORS, STOCKS } from '../constants/marketData'
 import { useSettings } from './SettingsContext'
 import { getApiBase, resolveApiBase } from '../utils/apiBase'
-import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap } from '../utils/symbolFallbacks'
+import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap, isStubHistory } from '../utils/symbolFallbacks'
 
 export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice, fmtMoney, fmtVol, fmtIndex } from '../utils/format'
 
@@ -61,6 +61,7 @@ const NATIVE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (
 
 const FIRST_PAINT = [
   '^GSPC', '^IXIC', '^DJI', '^NDX', '^RUT', '^VIX',
+  '^BSESN', '^NSEI',
   'BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F', 'DX-Y.NYB', '^TNX', '^IRX',
   'LBR=F', 'ZNC=F', 'NICK.L', 'HG=F', 'ALI=F',
 ]
@@ -232,8 +233,8 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
       const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
       const last = prices[prices.length - 1]
-      const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
-      if (prices.length >= 2 && last && !syntheticLen) {
+      const stub = isStubHistory(prices, getFallbackQuote(sym).regularMarketPrice)
+      if (prices.length >= 2 && last && !stub) {
         const fallback = getFallbackQuote(sym)
         const targetT = last.t - 24 * 3600
         let prev = prices[0].c

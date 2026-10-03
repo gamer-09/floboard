@@ -345,61 +345,17 @@ router.get("/market/mcap", async (req, res) => {
   res.json({ results: Object.fromEntries(map) });
 });
 
-function intHash(seed: number): number {
-  let t = (seed += 0x6d2b79f5);
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
-
-function generateRealisticHistory(
-  sym: string,
-  range: string,
-  basePrice: number,
-  nowSec: number,
-  stepSec: number,
-  count: number
-): Array<{ t: number; c: number }> {
-  let seed = 0;
-  const seedStr = `${sym}_${range}`;
-  for (let i = 0; i < seedStr.length; i++) {
-    seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
+/** Evenly spaced 24/28/30 bars = old stub generator. Gapped 28-bar cash sessions are live. */
+function isEvenStub(prices: Array<{ t: number; c: number }>): boolean {
+  const n = prices.length;
+  if (!(n === 24 || n === 28 || n === 30) || n < 3) return false;
+  const step = prices[1].t - prices[0].t;
+  if (step <= 0) return true;
+  let even = 0;
+  for (let i = 1; i < n; i++) {
+    if (Math.abs(prices[i].t - prices[i - 1].t - step) <= 2) even++;
   }
-  const drift = (intHash(seed) - 0.45) * 0.018;
-  const dailyVol =
-    sym.includes("=X") || sym.includes("/") || sym.startsWith("^")
-      ? 0.003
-      : sym.endsWith("-USD")
-      ? 0.018
-      : 0.012;
-
-  const returns: number[] = [];
-  for (let i = 0; i < count; i++) {
-    const r1 = intHash(seed + i * 7 + 1);
-    const r2 = intHash(seed + i * 7 + 2);
-    const shock = (r1 + r2 - 1.0) * dailyVol;
-    returns.push(drift / count + shock);
-  }
-
-  const startPrice = +(basePrice * (1 - drift)).toFixed(4);
-  let currentPrice = startPrice > 0 ? startPrice : basePrice * 0.95;
-  const prices: Array<{ t: number; c: number }> = [];
-
-  for (let idx = 0; idx < count; idx++) {
-    const r3 = intHash(seed + idx * 13 + 3);
-    const prevClose = idx > 0 ? prices[idx - 1].c : currentPrice;
-    const openGap = (r3 - 0.5) * 0.002 * prevClose;
-    const o = +(prevClose + openGap).toFixed(4);
-
-    currentPrice = +(o * (1 + returns[idx])).toFixed(4);
-    if (idx === count - 1) currentPrice = +(basePrice).toFixed(4);
-
-    prices.push({
-      t: nowSec - (count - 1 - idx) * stepSec,
-      c: currentPrice,
-    });
-  }
-  return prices;
+  return even >= n - 2;
 }
 
 // ── Historical chart data ─────────────────────────────────────────────────
@@ -466,10 +422,10 @@ router.get("/market/history", async (req, res) => {
       )
       .map((q) => ({ t: Math.floor(q.date.getTime() / 1000), c: q.close }));
 
-    const fakeLen = prices.length === 24 || prices.length === 28 || prices.length === 30;
-    if (prices.length < 2 || fakeLen) {
+    if (prices.length < 2 || isEvenStub(prices)) {
       const livePrices = await fetchYahooChartPrices(targetSym, range);
-      if (livePrices.length >= 2) prices = livePrices;
+      if (livePrices.length >= 2 && !isEvenStub(livePrices)) prices = livePrices;
+      else if (prices.length < 2 && livePrices.length >= 2) prices = livePrices;
     }
     if (prices.length < 2) {
       res.json({ symbol: sym, range, prices: [] });

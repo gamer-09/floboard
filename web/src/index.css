@@ -563,6 +563,8 @@ textarea.field, .chat-field {
 .hours-name { font-size: 13px; font-weight: 700; }
 .hours-time { font-size: 11px; font-family: var(--mono); }
 .hours-status { font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+.hours-session { font-size: 10px; font-family: var(--mono); color: var(--t4); }
+.hours-countdown { font-size: 10px; line-height: 1.3; color: var(--t4); }
 .hours-region { font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--t4); margin: 4px 0 8px; }
 
 .comm-card {

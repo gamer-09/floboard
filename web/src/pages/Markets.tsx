@@ -87,7 +87,8 @@ function MarketHoursSection() {
                   <div className="hours-name" style={{ color: open ? 'var(--gain)' : 'var(--t2)' }}>{ex.name}</div>
                   <div className="hours-time" style={{ color }}>{st.localTime}</div>
                   <div className="hours-status" style={{ color }}>{open ? 'OPEN' : lunch ? 'LUNCH' : 'CLOSED'}</div>
-                  <div className="hours-countdown" style={{ color: 'var(--t4)' }}>{st.detail}</div>
+                  <div className="hours-session">{st.hoursLabel}</div>
+                  <div className="hours-countdown">{st.detail}</div>
                 </div>
               )
             })}
