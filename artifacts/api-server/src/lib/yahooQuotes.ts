@@ -27,6 +27,56 @@ export interface YahooLiveQuote {
   ask?: number;
 }
 
+export async function fetchYahooChartPrices(
+  sym: string,
+  range: string,
+): Promise<Array<{ t: number; c: number }>> {
+  const attempts: Array<{ range: string; interval: string }> =
+    range === "1d"
+      ? [
+          { range: "1d", interval: "5m" },
+          { range: "5d", interval: "1h" },
+        ]
+      : range === "7d"
+        ? [
+            { range: "5d", interval: "1h" },
+            { range: "1mo", interval: "1d" },
+          ]
+        : range === "1mo"
+          ? [{ range: "1mo", interval: "1d" }]
+          : [{ range: "3mo", interval: "1d" }];
+
+  for (const a of attempts) {
+    try {
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${a.interval}&range=${a.range}`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA, Accept: "application/json" },
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as {
+        chart?: {
+          result?: Array<{
+            timestamp?: number[];
+            indicators?: { quote?: Array<{ close?: Array<number | null> }> };
+          }>;
+        };
+      };
+      const row = json.chart?.result?.[0];
+      const ts = row?.timestamp ?? [];
+      const close = row?.indicators?.quote?.[0]?.close ?? [];
+      const prices: Array<{ t: number; c: number }> = [];
+      for (let i = 0; i < ts.length; i++) {
+        const c = close[i];
+        if (typeof c === "number" && Number.isFinite(c) && c > 0) prices.push({ t: ts[i], c });
+      }
+      if (prices.length >= 2) return prices;
+    } catch {
+      /* try next */
+    }
+  }
+  return [];
+}
+
 function crumbEnabled() {
   return process.env.VITEST !== "true" && process.env.NODE_ENV !== "test";
 }

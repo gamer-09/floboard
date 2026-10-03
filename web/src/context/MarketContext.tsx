@@ -228,43 +228,43 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
       {},
       8000,
     )
-    if (!res.ok) return null
-    const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
-    const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
-    if (prices.length < 2) return null
-    const last = prices[prices.length - 1]
-    const fallback = getFallbackQuote(sym)
-    const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
-    if (syntheticLen && Math.abs(last.c - fallback.regularMarketPrice) < 1e-6) return null
-
-    const targetT = last.t - 24 * 3600
-    let prev = prices[0].c
-    for (let i = prices.length - 1; i >= 0; i--) {
-      if (prices[i].t <= targetT) {
-        prev = prices[i].c
-        break
+    if (res.ok) {
+      const json = await res.json() as { prices?: Array<{ t: number; c: number }>; marketCap?: number; shortName?: string; volume?: number }
+      const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
+      const last = prices[prices.length - 1]
+      const syntheticLen = prices.length === 24 || prices.length === 28 || prices.length === 30
+      if (prices.length >= 2 && last && !syntheticLen) {
+        const fallback = getFallbackQuote(sym)
+        const targetT = last.t - 24 * 3600
+        let prev = prices[0].c
+        for (let i = prices.length - 1; i >= 0; i--) {
+          if (prices[i].t <= targetT) {
+            prev = prices[i].c
+            break
+          }
+        }
+        if (!prev) prev = prices[Math.max(0, prices.length - 2)].c
+        const change = last.c - prev
+        const changePct = prev ? (change / prev) * 100 : 0
+        const window = prices.slice(-24).map((p) => p.c)
+        const mcap = typeof json.marketCap === 'number' && json.marketCap > 0 && !isFallbackMcap(sym, json.marketCap)
+          ? json.marketCap
+          : 0
+        return {
+          symbol: sym,
+          shortName: json.shortName || fallback.shortName,
+          quoteType: fallback.quoteType,
+          currency: fallback.currency,
+          regularMarketPrice: last.c,
+          regularMarketChangePercent: changePct,
+          regularMarketChange: change,
+          regularMarketPreviousClose: prev,
+          regularMarketDayHigh: Math.max(...window),
+          regularMarketDayLow: Math.min(...window),
+          regularMarketVolume: typeof json.volume === 'number' && json.volume > 0 && json.volume !== 1_000_000 ? json.volume : 0,
+          marketCap: mcap,
+        }
       }
-    }
-    if (!prev) prev = prices[Math.max(0, prices.length - 2)].c
-    const change = last.c - prev
-    const changePct = prev ? (change / prev) * 100 : 0
-    const window = prices.slice(-24).map((p) => p.c)
-    const mcap = typeof json.marketCap === 'number' && json.marketCap > 0 && !isFallbackMcap(sym, json.marketCap)
-      ? json.marketCap
-      : 0
-    return {
-      symbol: sym,
-      shortName: json.shortName || fallback.shortName,
-      quoteType: fallback.quoteType,
-      currency: fallback.currency,
-      regularMarketPrice: last.c,
-      regularMarketChangePercent: changePct,
-      regularMarketChange: change,
-      regularMarketPreviousClose: prev,
-      regularMarketDayHigh: Math.max(...window),
-      regularMarketDayLow: Math.min(...window),
-      regularMarketVolume: typeof json.volume === 'number' && json.volume > 0 && json.volume !== 1_000_000 ? json.volume : 0,
-      marketCap: mcap,
     }
   } catch { /* try Yahoo chart next */ }
   try {

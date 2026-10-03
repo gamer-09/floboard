@@ -1,6 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import { Router } from "express";
-import { fetchLiveQuotes } from "../lib/yahooQuotes";
+import { fetchLiveQuotes, fetchYahooChartPrices } from "../lib/yahooQuotes";
 import { attachNasdaqMcaps, fetchLiveMcaps } from "../lib/nasdaqMcap";
 
 const router = Router();
@@ -466,13 +466,14 @@ router.get("/market/history", async (req, res) => {
       )
       .map((q) => ({ t: Math.floor(q.date.getTime() / 1000), c: q.close }));
 
-    if (prices.length === 0) {
-      const fallbackQuote = getFallbackQuote(sym);
-      const basePrice = (fallbackQuote.regularMarketPrice as number) || 100;
-      const count = range === "1d" ? 24 : range === "7d" ? 28 : 30;
-      const nowSec = Math.floor(Date.now() / 1000);
-      const stepSec = Math.max(60, Math.floor(((Date.now() - period1.getTime()) / 1000) / count));
-      prices = generateRealisticHistory(sym, range, basePrice, nowSec, stepSec, count);
+    const fakeLen = prices.length === 24 || prices.length === 28 || prices.length === 30;
+    if (prices.length < 2 || fakeLen) {
+      const livePrices = await fetchYahooChartPrices(targetSym, range);
+      if (livePrices.length >= 2) prices = livePrices;
+    }
+    if (prices.length < 2) {
+      res.json({ symbol: sym, range, prices: [] });
+      return;
     }
 
     let marketCap = 0;
@@ -509,14 +510,14 @@ router.get("/market/history", async (req, res) => {
     setCache(cacheKey, payload, ttlMs);
     res.json(payload);
   } catch {
-    req.log?.debug({ symbol: sym }, "Using fallback chart history");
-    const fallbackQuote = getFallbackQuote(sym);
-    const basePrice = (fallbackQuote.regularMarketPrice as number) || 100;
-    const count = range === "1d" ? 24 : range === "7d" ? 28 : 30;
-    const nowSec = Math.floor(Date.now() / 1000);
-    const stepSec = Math.max(60, Math.floor(((Date.now() - period1.getTime()) / 1000) / count));
-    const prices = generateRealisticHistory(sym, range, basePrice, nowSec, stepSec, count);
-    res.json({ symbol: sym, range, prices });
+    req.log?.debug({ symbol: sym }, "History lookup failed");
+    try {
+      const targetSym = resolveSymbolAlias(sym);
+      const prices = await fetchYahooChartPrices(targetSym, range);
+      res.json({ symbol: sym, range, prices });
+    } catch {
+      res.json({ symbol: sym, range, prices: [] });
+    }
   }
 });
 
