@@ -10,7 +10,15 @@ const ALLOWED_ORIGINS = new Set([
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
-  return ALLOWED_ORIGINS.has(origin);
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const u = new URL(origin);
+    if (u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1")) return true;
+    if (u.protocol === "https:" && (u.hostname.endsWith(".github.io") || u.hostname.endsWith(".onrender.com"))) return true;
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {

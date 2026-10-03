@@ -3,7 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { isAllowedOrigin, rateLimit, securityHeaders } from "./lib/security";
+import { isAllowedOrigin, securityHeaders } from "./lib/security";
 
 const app: Express = express();
 app.disable("x-powered-by");
@@ -31,7 +31,8 @@ app.use(securityHeaders);
 app.use(
   cors({
     origin(origin, cb) {
-      cb(null, isAllowedOrigin(origin));
+      if (isAllowedOrigin(origin)) cb(null, origin || true);
+      else cb(null, false);
     },
     methods: ["GET", "POST"],
     maxAge: 600,
@@ -39,8 +40,6 @@ app.use(
 );
 app.use(express.json({ limit: "64kb" }));
 app.use(express.urlencoded({ extended: false, limit: "32kb" }));
-app.use("/api", rateLimit(120, 60_000));
-
 app.use("/api", router);
 
 export default app;
