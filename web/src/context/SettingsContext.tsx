@@ -17,6 +17,7 @@ export interface AppSettings {
   clearChatKey: number
   notificationsEnabled: boolean
   notifyPortfolio: boolean
+  notifyWatchlist: boolean
   notifyMarketMoves: boolean
   notifyNews: boolean
   riskProfile: RiskProfile
@@ -40,6 +41,7 @@ const DEFAULT: AppSettings = {
   clearPortfolioKey: 0,
   notificationsEnabled: false,
   notifyPortfolio: true,
+  notifyWatchlist: true,
   notifyMarketMoves: true,
   notifyNews: true,
   riskProfile: 'moderate',

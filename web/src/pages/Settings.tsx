@@ -152,6 +152,9 @@ export default function SettingsScreen() {
         <SettingRow label="Portfolio moves" desc="Alert when a simulated holding’s day change crosses the threshold below.">
           <Toggle checked={settings.notifyPortfolio} onChange={(v) => updateSetting('notifyPortfolio', v)} disabled={!settings.notificationsEnabled} />
         </SettingRow>
+        <SettingRow label="Favorites watchlist" desc="Alert when a ★ Favorite moves by the day-move threshold (or 1.5% if the threshold is Off). Preset Tech/Crypto/FX lists are not included.">
+          <Toggle checked={settings.notifyWatchlist} onChange={(v) => updateSetting('notifyWatchlist', v)} disabled={!settings.notificationsEnabled} />
+        </SettingRow>
         <SettingRow label="Major market moves" desc="Alert when S&P 500, Nasdaq, Dow, or Bitcoin moves 1.5% or more on the session.">
           <Toggle checked={settings.notifyMarketMoves} onChange={(v) => updateSetting('notifyMarketMoves', v)} disabled={!settings.notificationsEnabled} />
         </SettingRow>
@@ -167,7 +170,7 @@ export default function SettingsScreen() {
       </Block>
 
       <Block title="Portfolio alerts">
-        <SettingRow label="Day-move threshold" desc="Highlight a holding — and fire a portfolio notification if those are on — when the daily move exceeds this. Off = no highlight and no portfolio alerts.">
+        <SettingRow label="Day-move threshold" desc="Highlight a holding, and fire portfolio / favorites notifications, when the daily move exceeds this. Off = no highlight; favorites still alert at 1.5%.">
           <OptionGroup
             options={[{ label: 'Off', value: 0 }, { label: '3%', value: 3 }, { label: '5%', value: 5 }, { label: '10%', value: 10 }]}
             value={settings.alertThreshold}
