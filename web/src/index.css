@@ -429,17 +429,34 @@ textarea.field, .chat-field {
 .seg-btn.gain.active { background: var(--gain-dim); border-color: color-mix(in srgb, var(--gain) 40%, transparent); color: var(--gain); }
 
 .toggle {
-  width: 42px; height: 24px; border-radius: 999px;
-  border: none; background: var(--rim); position: relative; padding: 0;
+  width: 44px;
+  height: 26px;
+  min-width: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  border: none;
+  background: var(--rim);
+  position: relative;
+  padding: 0;
+  overflow: hidden;
 }
 .toggle.on { background: var(--gain); }
 .toggle-knob {
-  position: absolute; top: 3px; left: 3px;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; transition: left .18s;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left .18s ease, right .18s ease;
   box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  pointer-events: none;
 }
-.toggle.on .toggle-knob { left: 21px; }
+.toggle.on .toggle-knob {
+  left: auto;
+  right: 3px;
+}
 
 .toolbar {
   display: flex;
@@ -900,9 +917,13 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   padding: 14px 0;
   border-bottom: 1px solid var(--rim);
 }
+.setting-row > div:first-child { min-width: 0; flex: 1; }
+.setting-row > .toggle,
+.setting-row > .btn,
+.setting-row > .seg { flex-shrink: 0; }
 .setting-row:last-child { border-bottom: none; }
 .setting-lab { font-size: 13.5px; font-weight: 600; color: var(--t1); }
-.setting-desc { font-size: 12px; color: var(--t3); margin-top: 3px; }
+.setting-desc { font-size: 12px; color: var(--t3); margin-top: 3px; white-space: normal; }
 
 .help-hero {
   border-radius: 16px;
