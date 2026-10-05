@@ -98,5 +98,5 @@ export function fmtAsOf(unix: number | null | undefined, now = Date.now()): stri
   const sameDay = d.toDateString() === new Date(now).toDateString()
   if (sameDay) return time
   const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  return `${day} ${time}`
+  return `${day} · ${time}`
 }

@@ -138,7 +138,7 @@ export default function CryptoScreen() {
                     {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{price(d.fiftyTwoWeekHigh)}</div></div>}
                     {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{price(d.fiftyTwoWeekLow)}</div></div>}
                     <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, ct.sym)}</div></div>
-                    {d.updatedAt != null && <div><div className="stat-lab">Yahoo as of</div><div className="stat-val"><AsOf at={d.updatedAt} /></div></div>}
+                    {d.updatedAt != null && <div><div className="stat-lab">Last print</div><div className="stat-val"><AsOf at={d.updatedAt} variant="plain" /></div></div>}
                   </div>
                   <button
                     type="button"

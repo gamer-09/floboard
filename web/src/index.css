@@ -1093,16 +1093,78 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
 .updated {
   text-align: center;
   font-size: 12px;
-  color: var(--t4);
+  color: var(--t3);
   margin-top: 22px;
 }
+
+/* Last-print stamp — tiny clock chip, not a dumped caption */
 .asof {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
   font-size: 10px;
-  font-weight: 500;
-  color: var(--t4);
-  margin-top: 3px;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+  color: var(--t3);
+  line-height: 1;
   white-space: nowrap;
-  letter-spacing: 0.1px;
+  vertical-align: middle;
+  max-width: 100%;
+}
+.asof svg { flex: none; opacity: 0.72; }
+.asof-plain {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--t2);
+}
+
+.kpi .asof,
+.index-meta .asof,
+.comm-card .asof,
+.right .asof {
+  padding: 3px 7px 3px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--rim);
+  color: var(--t3);
+}
+.kpi .asof { margin-top: 8px; }
+.right .asof { margin-top: 6px; }
+.comm-card .asof { margin-left: 8px; vertical-align: middle; }
+
+.index-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-chip .asof,
+.chat-ribbon-chip .asof,
+table.data .asof,
+.hold-stats .asof {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--t3);
+}
+.chat-ribbon-chip .asof {
+  display: flex;
+  margin-top: 4px;
+  justify-content: center;
+}
+table.data .asof {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.hold-stats .asof {
+  display: inline-flex;
+  margin-top: 5px;
+  justify-content: center;
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */

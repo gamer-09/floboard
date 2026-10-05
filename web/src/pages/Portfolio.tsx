@@ -236,10 +236,13 @@ export default function PortfolioScreen() {
                 </div>
                 <div className="hold-stats">
                   <div><div className="stat-lab">Qty</div><div className="stat-val">{h.shares}</div></div>
-                  <div><div className="stat-lab">Price</div><div className="stat-val">{money(price)}</div></div>
+                  <div>
+                    <div className="stat-lab">Price</div>
+                    <div className="stat-val">{money(price)}</div>
+                    {live ? <AsOf at={d?.updatedAt} /> : null}
+                  </div>
                   <div><div className="stat-lab">Value</div><div className="stat-val" style={{ color: 'var(--amber)' }}>{money(value)}</div></div>
                   <div><div className="stat-lab">Today</div><div className="stat-val" style={{ color: dayCol }}>{live ? fmtChg(day) : '—'}</div></div>
-                  <div><div className="stat-lab">Yahoo as of</div><div className="stat-val"><AsOf at={d?.updatedAt} /></div></div>
                 </div>
                 <div className="hold-pnl">
                   <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>Unrealised P&L</span>

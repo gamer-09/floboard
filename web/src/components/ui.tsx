@@ -2,12 +2,31 @@ import React from 'react'
 import { chgDir, fmtChg } from '../context/MarketContext'
 import { fmtAsOf, unixSec } from '../utils/format'
 
-export function AsOf({ at }: { at?: number | null }) {
+function ClockIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 4.6V8.1l2.3 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** Last-print stamp from Yahoo. Chip sits under a price; plain is for labelled stats. */
+export function AsOf({ at, variant = 'chip' }: { at?: number | null; variant?: 'chip' | 'plain' }) {
   const label = fmtAsOf(at)
   if (!label) return null
   const sec = unixSec(at)
-  const title = sec ? new Date(sec * 1000).toLocaleString() : undefined
-  return <div className="asof" title={title}>as of {label}</div>
+  const title = sec ? `Last print ${new Date(sec * 1000).toLocaleString()}` : undefined
+  return (
+    <span
+      className={`asof${variant === 'plain' ? ' asof-plain' : ''}`}
+      title={title}
+      aria-label={`Last print ${label}`}
+    >
+      {variant === 'chip' ? <ClockIcon /> : null}
+      {label}
+    </span>
+  )
 }
 
 export function Section({
