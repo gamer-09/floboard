@@ -316,6 +316,7 @@ router.get("/market/history", async (req, res) => {
     let preMarketChangePercent: number | undefined;
     let postMarketPrice: number | undefined;
     let postMarketChangePercent: number | undefined;
+    let updatedAt: number | undefined = prices[prices.length - 1]?.t;
     try {
       const live = await fetchLiveQuotes([sym], resolveSymbolAlias);
       const q = live.get(sym);
@@ -326,6 +327,7 @@ router.get("/market/history", async (req, res) => {
         preMarketChangePercent = q.preMarketChangePercent;
         postMarketPrice = q.postMarketPrice;
         postMarketChangePercent = q.postMarketChangePercent;
+        if (q.updatedAt) updatedAt = q.updatedAt;
       }
     } catch {
       /* quote crumb is optional for history */
@@ -359,6 +361,7 @@ router.get("/market/history", async (req, res) => {
       preMarketChangePercent,
       postMarketPrice,
       postMarketChangePercent,
+      updatedAt,
     };
     setCache(cacheKey, payload, ttlMs);
     res.json(payload);

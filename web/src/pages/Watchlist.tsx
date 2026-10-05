@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
-import { EmptyState, SearchBox, Segmented } from '../components/ui'
+import { AsOf, EmptyState, SearchBox, Segmented } from '../components/ui'
 import { COMMODITIES, CRYPTOS, FOREX, INDICES, STOCKS } from '../constants/marketData'
 import { chgDir, fmtChg, isSyntheticQuote, sessionQuote, useMarket, type QuoteData } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
@@ -324,6 +324,7 @@ export default function WatchlistScreen() {
                       <>
                         <div className="mono" style={{ fontWeight: 700 }}>{`${prefix}${price(sess.price, dec)}`}</div>
                         <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{fmtChg(chg)}{sess.tag ? ` ${sess.tag}` : ''}</div>
+                        <AsOf at={d?.updatedAt} />
                       </>
                     ) : (
                       <>

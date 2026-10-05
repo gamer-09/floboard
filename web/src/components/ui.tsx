@@ -1,5 +1,14 @@
 import React from 'react'
 import { chgDir, fmtChg } from '../context/MarketContext'
+import { fmtAsOf, unixSec } from '../utils/format'
+
+export function AsOf({ at }: { at?: number | null }) {
+  const label = fmtAsOf(at)
+  if (!label) return null
+  const sec = unixSec(at)
+  const title = sec ? new Date(sec * 1000).toLocaleString() : undefined
+  return <div className="asof" title={title}>as of {label}</div>
+}
 
 export function Section({
   label,

@@ -5,7 +5,7 @@ import { getApiBase, resolveApiBase } from '../utils/apiBase'
 import { resolveSymbolAlias, getFallbackQuote, isFallbackMcap, isStubHistory } from '../utils/symbolFallbacks'
 import { fetchGeckoUsdQuote, fetchYahooChartRelay } from '../utils/liveQuotes'
 
-export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice, fmtMoney, fmtVol, fmtIndex } from '../utils/format'
+export { fmt, fmtChg, fmtMcap, chgDir, fmtPrice, fmtMoney, fmtVol, fmtIndex, fmtAsOf } from '../utils/format'
 
 export interface QuoteData {
   symbol: string
@@ -29,6 +29,8 @@ export interface QuoteData {
   postMarketChangePercent?: number
   bid?: number
   ask?: number
+  /** Yahoo last print, unix seconds */
+  updatedAt?: number
 }
 
 interface MarketContextType {
@@ -232,6 +234,7 @@ async function fetchOneChart(sym: string): Promise<{ quote: QuoteData | null; li
       preMarketChangePercent: (meta.preMarketChangePercent as number) ?? undefined,
       postMarketPrice: (meta.postMarketPrice as number) ?? undefined,
       postMarketChangePercent: (meta.postMarketChangePercent as number) ?? undefined,
+      updatedAt: typeof meta.regularMarketTime === 'number' ? (meta.regularMarketTime > 1e12 ? Math.floor(meta.regularMarketTime / 1000) : meta.regularMarketTime) : undefined,
     }
     return { quote, live: true }
   } catch {
@@ -257,6 +260,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
         preMarketChangePercent?: number
         postMarketPrice?: number
         postMarketChangePercent?: number
+        updatedAt?: number
       }
       const prices = (json.prices ?? []).filter((p) => p && Number.isFinite(p.c) && p.c > 0)
       const last = prices[prices.length - 1]
@@ -293,6 +297,7 @@ async function quoteFromHistory(sym: string): Promise<QuoteData | null> {
           preMarketChangePercent: json.preMarketChangePercent,
           postMarketPrice: json.postMarketPrice,
           postMarketChangePercent: json.postMarketChangePercent,
+          updatedAt: json.updatedAt || last.t,
         }
       }
     }

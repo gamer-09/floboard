@@ -15,6 +15,7 @@ export interface LiveQuote {
   fiftyTwoWeekHigh?: number
   fiftyTwoWeekLow?: number
   marketCap: number
+  updatedAt?: number
 }
 
 function extractChartJson(text: string): unknown | null {
@@ -68,6 +69,9 @@ function parseChart(json: unknown, sym: string): { prices: Prices; quote: LiveQu
     fiftyTwoWeekHigh: typeof meta.fiftyTwoWeekHigh === 'number' ? meta.fiftyTwoWeekHigh : undefined,
     fiftyTwoWeekLow: typeof meta.fiftyTwoWeekLow === 'number' ? meta.fiftyTwoWeekLow : undefined,
     marketCap: typeof meta.marketCap === 'number' ? meta.marketCap : 0,
+    updatedAt: typeof meta.regularMarketTime === 'number'
+      ? (meta.regularMarketTime > 1e12 ? Math.floor(meta.regularMarketTime / 1000) : meta.regularMarketTime)
+      : prices[prices.length - 1]?.t,
   }
   return { prices, quote }
 }
@@ -142,6 +146,7 @@ export async function fetchGeckoUsdQuote(sym: string): Promise<LiveQuote | null>
       regularMarketPreviousClose: prev,
       regularMarketVolume: row.usd_24h_vol ?? 0,
       marketCap: row.usd_market_cap ?? 0,
+      updatedAt: Math.floor(Date.now() / 1000),
     }
   } catch {
     return null

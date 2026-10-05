@@ -4,6 +4,7 @@ import { useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { getApiBase, resolveApiBase } from '../utils/apiBase'
 import { canonicalPath } from '../utils/routes'
+import { AsOf } from '../components/ui'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
@@ -280,6 +281,7 @@ export default function AdvisorScreen() {
               <span className="chat-ribbon-lab">{label}</span>
               <span className="chat-ribbon-val">{price}</span>
               {d && <span style={{ color: col }}>{chg >= 0 ? '▲' : '▼'} {Math.abs(chg).toFixed(1)}%</span>}
+              <AsOf at={d?.updatedAt} />
             </div>
           )
         })}

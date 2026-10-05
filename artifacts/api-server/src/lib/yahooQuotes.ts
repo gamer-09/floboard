@@ -25,6 +25,7 @@ export interface YahooLiveQuote {
   postMarketChangePercent?: number;
   bid?: number;
   ask?: number;
+  updatedAt?: number;
 }
 
 export async function fetchYahooChartPrices(
@@ -134,6 +135,11 @@ function toQuote(raw: Record<string, unknown>, requested: string): YahooLiveQuot
     postMarketChangePercent: num(raw.postMarketChangePercent),
     bid: num(raw.bid),
     ask: num(raw.ask),
+    updatedAt: num(raw.regularMarketTime)
+      ? raw.regularMarketTime as number > 1e12
+        ? Math.floor((raw.regularMarketTime as number) / 1000)
+        : (raw.regularMarketTime as number)
+      : undefined,
   };
 }
 
@@ -234,6 +240,11 @@ function quoteFromChartMeta(meta: Record<string, unknown>, requested: string): Y
     fiftyTwoWeekHigh: num(meta.fiftyTwoWeekHigh),
     fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
     marketCap: num(meta.marketCap) ?? 0,
+    updatedAt: num(meta.regularMarketTime)
+      ? (meta.regularMarketTime as number) > 1e12
+        ? Math.floor((meta.regularMarketTime as number) / 1000)
+        : (meta.regularMarketTime as number)
+      : undefined,
   };
 }
 

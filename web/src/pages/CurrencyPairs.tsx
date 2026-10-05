@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import SparklineChart from '../components/SparklineChart'
-import { DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
+import { AsOf, DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
 import { FOREX } from '../constants/marketData'
 import { chgDir, fmtChg, useMarket } from '../context/MarketContext'
 import { useFormat } from '../hooks/useFormat'
@@ -166,6 +166,7 @@ export default function CurrencyPairsScreen() {
                 <div className="right">
                   <div className="mono" style={{ fontWeight: 700, fontSize: 15 }}>{d ? price(d.regularMarketPrice, dec) : '—'}</div>
                   <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
+                  <AsOf at={d?.updatedAt} />
                 </div>
               </div>
               {open && d && (

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SparklineChart from '../components/SparklineChart'
-import { DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
+import { AsOf, DayRangeBar, SearchBox, Segmented, StatsStrip } from '../components/ui'
 import { CRYPTOS } from '../constants/marketData'
 import { chgDir, fmtChg, useMarket } from '../context/MarketContext'
 import { useFormat } from '../hooks/useFormat'
@@ -123,6 +123,7 @@ export default function CryptoScreen() {
                 <div className="right">
                   <div className="mono" style={{ fontWeight: 700 }}>{d ? `$${price(d.regularMarketPrice)}` : '—'}</div>
                   <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>{d ? fmtChg(chg) : '—'}</div>
+                  <AsOf at={d?.updatedAt} />
                 </div>
                 <span style={{ color: 'var(--t4)', fontSize: 11 }}>{isExpanded ? '▲' : '▼'}</span>
               </div>
@@ -137,6 +138,7 @@ export default function CryptoScreen() {
                     {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{price(d.fiftyTwoWeekHigh)}</div></div>}
                     {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{price(d.fiftyTwoWeekLow)}</div></div>}
                     <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, ct.sym)}</div></div>
+                    {d.updatedAt != null && <div><div className="stat-lab">Yahoo as of</div><div className="stat-val"><AsOf at={d.updatedAt} /></div></div>}
                   </div>
                   <button
                     type="button"

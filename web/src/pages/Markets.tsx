@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Flag from '../components/Flag'
 import SparklineChart from '../components/SparklineChart'
-import { ChangeBadge, Section, Segmented } from '../components/ui'
+import { AsOf, ChangeBadge, Section, Segmented } from '../components/ui'
 import { EXCHANGES, getExchangeStatus } from '../constants/exchanges'
 import { BONDS, COMMODITIES, CRYPTOS, FOREX, INDICES, SECTORS, STOCKS } from '../constants/marketData'
 import { chgDir, fmt, fmtChg, sessionQuote, useMarket } from '../context/MarketContext'
@@ -41,6 +41,7 @@ function IndexCard({ sym, name, region }: { sym: string; name: string; region: s
         <div className="index-name">{name}</div>
         <div className="index-price">{d ? index(d.regularMarketPrice) : '—'}</div>
         <ChangeBadge value={d ? chg : null} />
+        <AsOf at={d?.updatedAt} />
         <div style={{ marginTop: 8 }}>
           <SparklineChart symbol={sym} range="7d" width={160} height={42} color={d ? accent : undefined} />
         </div>
@@ -146,6 +147,7 @@ export default function MarketsScreen() {
               <div className="kpi-label">{label}</div>
               <div className="kpi-val">{formatRibbon(kind, d?.regularMarketPrice, compact)}</div>
               {d && <div className={`kpi-chg num-${dir}`}>{dir === 'up' ? '▲' : dir === 'dn' ? '▼' : '—'} {Math.abs(chg).toFixed(1)}%</div>}
+              <AsOf at={d?.updatedAt} />
             </div>
           )
         })}
@@ -281,6 +283,7 @@ export default function MarketsScreen() {
                 <span className="fx-name">{fx.label}</span>
                 <span className="fx-price">{d ? fmt(d.regularMarketPrice, 4) : '—'}</span>
                 {d && <ChangeBadge value={chg} />}
+                <AsOf at={d?.updatedAt} />
               </div>
             )
           })}
@@ -297,6 +300,7 @@ export default function MarketsScreen() {
                 <div className="comm-price">{d ? `$${price(d.regularMarketPrice, 2)}` : '—'}</div>
                 <div className="comm-unit">{co.unit}</div>
                 {d && <ChangeBadge value={d.regularMarketChangePercent} />}
+                <AsOf at={d?.updatedAt} />
               </div>
             )
           })}
@@ -326,7 +330,7 @@ export default function MarketsScreen() {
                       <div className="sym">{s.sym}</div>
                       <div className="muted">{s.name}{sess?.tag ? ` · ${sess.tag}` : ''}</div>
                     </td>
-                    <td className="num">{sess ? `$${price(sess.price)}` : '—'}</td>
+                    <td className="num">{sess ? `$${price(sess.price)}` : '—'}<AsOf at={d?.updatedAt} /></td>
                     <td className="num" style={{ color: dir === 'up' ? c.gain : dir === 'dn' ? c.loss : c.t2 }}>{sess ? fmtChg(chg) : '—'}</td>
                     <td className="num" style={{ color: 'var(--t3)' }}>{d ? mcap(d.marketCap, s.sym) : '—'}</td>
                   </tr>
@@ -337,7 +341,7 @@ export default function MarketsScreen() {
         </div>
       </Section>
 
-      {lastUpdated && <div className="updated">Last updated {lastUpdated.toLocaleTimeString()}</div>}
+      {lastUpdated && <div className="updated">Quotes refreshed {lastUpdated.toLocaleTimeString()} · each print shows Yahoo’s last update</div>}
     </div>
   )
 }

@@ -78,3 +78,25 @@ export function chgDir(n: number | null | undefined): 'up' | 'dn' | 'flat' {
   if (n == null || !Number.isFinite(n) || n === 0) return 'flat'
   return n > 0 ? 'up' : 'dn'
 }
+
+/** Normalize Yahoo unix seconds or ms to seconds. */
+export function unixSec(v: unknown): number | undefined {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return undefined
+  return v > 1e12 ? Math.floor(v / 1000) : Math.floor(v)
+}
+
+/** "just now" / "12m ago" / "4:02 PM" / "Oct 3, 4:02 PM" */
+export function fmtAsOf(unix: number | null | undefined, now = Date.now()): string {
+  const sec = unixSec(unix)
+  if (sec == null) return ''
+  const d = new Date(sec * 1000)
+  if (!Number.isFinite(d.getTime())) return ''
+  const diff = now - d.getTime()
+  if (diff >= 0 && diff < 45_000) return 'just now'
+  if (diff >= 0 && diff < 3_600_000) return `${Math.max(1, Math.round(diff / 60_000))}m ago`
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const sameDay = d.toDateString() === new Date(now).toDateString()
+  if (sameDay) return time
+  const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return `${day} ${time}`
+}

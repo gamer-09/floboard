@@ -3,6 +3,7 @@ import SparklineChart from './SparklineChart'
 import { chgDir, fmtChg, sessionQuote, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
 import { useFormat } from '../hooks/useFormat'
+import { AsOf } from './ui'
 
 export default function QuoteRow({
   sym,
@@ -45,6 +46,7 @@ export default function QuoteRow({
           <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: col, marginTop: 2 }}>
             {sess ? fmtChg(chg) : '—'}{sess?.tag ? <span className="muted"> {sess.tag}</span> : null}
           </div>
+          <AsOf at={d?.updatedAt} />
         </div>
         <span style={{ color: 'var(--t4)', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
       </div>

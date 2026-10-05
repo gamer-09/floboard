@@ -1096,6 +1096,14 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   color: var(--t4);
   margin-top: 22px;
 }
+.asof {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--t4);
+  margin-top: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+}
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {

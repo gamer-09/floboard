@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { EmptyState } from '../components/ui'
+import { AsOf, EmptyState } from '../components/ui'
 import { CRYPTOS, STOCKS } from '../constants/marketData'
 import { fmtChg, isSyntheticQuote, sessionQuote, useMarket } from '../context/MarketContext'
 import { useSettings } from '../context/SettingsContext'
@@ -239,6 +239,7 @@ export default function PortfolioScreen() {
                   <div><div className="stat-lab">Price</div><div className="stat-val">{money(price)}</div></div>
                   <div><div className="stat-lab">Value</div><div className="stat-val" style={{ color: 'var(--amber)' }}>{money(value)}</div></div>
                   <div><div className="stat-lab">Today</div><div className="stat-val" style={{ color: dayCol }}>{live ? fmtChg(day) : '—'}</div></div>
+                  <div><div className="stat-lab">Yahoo as of</div><div className="stat-val"><AsOf at={d?.updatedAt} /></div></div>
                 </div>
                 <div className="hold-pnl">
                   <span style={{ color: pnl >= 0 ? 'var(--gain)' : 'var(--loss)' }}>Unrealised P&L</span>
