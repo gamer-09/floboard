@@ -1097,75 +1097,47 @@ table.data .num { font-family: var(--mono); font-weight: 600; text-align: right;
   margin-top: 22px;
 }
 
-/* Last-print stamp — tiny clock chip, not a dumped caption */
+/* Last-print stamp — caption, never a price-looking number */
 .asof {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--mono);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+  font-family: inherit;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.15px;
-  color: var(--t3);
-  line-height: 1;
-  white-space: nowrap;
-  vertical-align: middle;
+  color: var(--t2);
+  line-height: 1.25;
   max-width: 100%;
 }
-.asof svg { flex: none; opacity: 0.72; }
+.asof-k {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--t3);
+}
 .asof-plain {
+  display: inline;
+  margin: 0;
   font-size: 13px;
   font-weight: 700;
   color: var(--t2);
 }
-
-.kpi .asof,
-.index-meta .asof,
-.comm-card .asof,
-.right .asof {
-  padding: 3px 7px 3px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--rim);
-  color: var(--t3);
-}
 .kpi .asof { margin-top: 8px; }
-.right .asof { margin-top: 6px; }
-.comm-card .asof { margin-left: 8px; vertical-align: middle; }
-
-.index-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.fx-chip .asof,
-.chat-ribbon-chip .asof,
-table.data .asof,
-.hold-stats .asof {
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--t3);
-}
-.chat-ribbon-chip .asof {
-  display: flex;
-  margin-top: 4px;
-  justify-content: center;
-}
-table.data .asof {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
-}
-.hold-stats .asof {
-  display: inline-flex;
-  margin-top: 5px;
-  justify-content: center;
-}
+.right .asof,
+table.data .asof { justify-content: flex-end; }
+.macro-cell .asof,
+.hold-stats .asof,
+.chat-ribbon-chip .asof { justify-content: center; }
+.chat-ribbon-chip .asof { margin-top: 4px; font-size: 9px; }
+.comm-card .asof { margin-top: 8px; }
+.sector .asof { margin-top: 6px; }
+.fx-chip { flex-wrap: wrap; row-gap: 4px; }
+.fx-chip .asof { margin-top: 0; }
+.bond-row { flex-wrap: wrap; }
+.bond-row .asof { flex: 1 0 100%; margin-top: 2px; padding-left: 54px; font-size: 9px; }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {

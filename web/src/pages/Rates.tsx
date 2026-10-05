@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import QuoteRow from '../components/QuoteRow'
-import { Section } from '../components/ui'
+import { AsOf, Section } from '../components/ui'
 import { BONDS } from '../constants/marketData'
 import { chgDir, fmt, useMarket } from '../context/MarketContext'
 import { useFormat } from '../hooks/useFormat'
@@ -30,14 +30,17 @@ export default function RatesScreen() {
         <div className="kpi">
           <div className="kpi-label">10-year</div>
           <div className="kpi-val">{tnx ? `${fmt(tnx.regularMarketPrice, 2)}%` : '—'}</div>
+          <AsOf at={tnx?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">3-month</div>
           <div className="kpi-val">{irx ? `${fmt(irx.regularMarketPrice, 2)}%` : '—'}</div>
+          <AsOf at={irx?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">TLT</div>
           <div className="kpi-val">{tlt ? `$${price(tlt.regularMarketPrice, 2)}` : '—'}</div>
+          <AsOf at={tlt?.updatedAt} />
         </div>
       </div>
 
@@ -55,6 +58,7 @@ export default function RatesScreen() {
                 <span className="bond-lab">{b.label}</span>
                 <div className="bond-track"><div className="bond-fill" style={{ width: `${pct}%`, background: barCol }} /></div>
                 <span className="bond-val">{y != null ? `${fmt(y, 2)}%` : '—'}</span>
+                <AsOf at={d?.updatedAt} />
               </div>
             )
           })}

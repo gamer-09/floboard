@@ -345,6 +345,7 @@ export default function WatchlistScreen() {
                           {d?.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{price(d.regularMarketDayLow, dec)}</div></div>}
                           {d?.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{price(d.regularMarketPreviousClose, dec)}</div></div>}
                           {d?.marketCap ? <div><div className="stat-lab">Mkt cap</div><div className="stat-val">{mcap(d.marketCap, sym)}</div></div> : null}
+                          {d?.updatedAt != null && <div><div className="stat-lab">Last print</div><div className="stat-val"><AsOf at={d.updatedAt} variant="plain" /></div></div>}
                         </div>
                       </>
                     ) : (

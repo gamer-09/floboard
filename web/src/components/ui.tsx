@@ -2,28 +2,20 @@ import React from 'react'
 import { chgDir, fmtChg } from '../context/MarketContext'
 import { fmtAsOf, unixSec } from '../utils/format'
 
-function ClockIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 4.6V8.1l2.3 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-/** Last-print stamp from Yahoo. Chip sits under a price; plain is for labelled stats. */
+/** Last-print stamp. Caption with the word Updated so it cannot be read as a price. */
 export function AsOf({ at, variant = 'chip' }: { at?: number | null; variant?: 'chip' | 'plain' }) {
   const label = fmtAsOf(at)
   if (!label) return null
   const sec = unixSec(at)
-  const title = sec ? `Last print ${new Date(sec * 1000).toLocaleString()}` : undefined
+  const title = sec
+    ? `Last print ${new Date(sec * 1000).toLocaleString(undefined, { hour12: true })}`
+    : undefined
+  if (variant === 'plain') {
+    return <span className="asof asof-plain" title={title}>{label}</span>
+  }
   return (
-    <span
-      className={`asof${variant === 'plain' ? ' asof-plain' : ''}`}
-      title={title}
-      aria-label={`Last print ${label}`}
-    >
-      {variant === 'chip' ? <ClockIcon /> : null}
+    <span className="asof" title={title} aria-label={`Updated ${label}`}>
+      <span className="asof-k">Updated</span>
       {label}
     </span>
   )

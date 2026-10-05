@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import QuoteRow from '../components/QuoteRow'
-import { Section } from '../components/ui'
+import { AsOf, Section } from '../components/ui'
 import { fmtChg, useMarket } from '../context/MarketContext'
 import { useFormat } from '../hooks/useFormat'
 
@@ -28,21 +28,25 @@ export default function CopperScreen() {
           <div className="kpi-label">Copper</div>
           <div className="kpi-val">{cu ? `$${price(cu.regularMarketPrice, 3)}` : '—'}</div>
           {cu && <div className="kpi-chg">{fmtChg(cu.regularMarketChangePercent)}</div>}
+          <AsOf at={cu?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">Aluminum</div>
           <div className="kpi-val">{al ? `$${price(al.regularMarketPrice, 2)}` : '—'}</div>
           {al && <div className="kpi-chg">{fmtChg(al.regularMarketChangePercent)}</div>}
+          <AsOf at={al?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">Nickel</div>
           <div className="kpi-val">{ni ? `$${price(ni.regularMarketPrice, 2)}` : '—'}</div>
           {ni && <div className="kpi-chg">{fmtChg(ni.regularMarketChangePercent)}</div>}
+          <AsOf at={ni?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">Gold</div>
           <div className="kpi-val">{au ? `$${price(au.regularMarketPrice, 2)}` : '—'}</div>
           {au && <div className="kpi-chg">{fmtChg(au.regularMarketChangePercent)}</div>}
+          <AsOf at={au?.updatedAt} />
         </div>
       </div>
 

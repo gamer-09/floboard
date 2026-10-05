@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import QuoteRow from '../components/QuoteRow'
-import { Section } from '../components/ui'
+import { AsOf, Section } from '../components/ui'
 import { fmtChg, useMarket } from '../context/MarketContext'
 import { useFormat } from '../hooks/useFormat'
 
@@ -29,21 +29,25 @@ export default function EnergyScreen() {
           <div className="kpi-label">WTI</div>
           <div className="kpi-val">{wti ? `$${price(wti.regularMarketPrice, 2)}` : '—'}</div>
           {wti && <div className="kpi-chg">{fmtChg(wti.regularMarketChangePercent)}</div>}
+          <AsOf at={wti?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">Brent</div>
           <div className="kpi-val">{brent ? `$${price(brent.regularMarketPrice, 2)}` : '—'}</div>
           {brent && <div className="kpi-chg">{fmtChg(brent.regularMarketChangePercent)}</div>}
+          <AsOf at={brent?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">Nat gas</div>
           <div className="kpi-val">{gas ? `$${price(gas.regularMarketPrice, 3)}` : '—'}</div>
           {gas && <div className="kpi-chg">{fmtChg(gas.regularMarketChangePercent)}</div>}
+          <AsOf at={gas?.updatedAt} />
         </div>
         <div className="kpi">
           <div className="kpi-label">XLE</div>
           <div className="kpi-val">{xle ? `$${price(xle.regularMarketPrice, 2)}` : '—'}</div>
           {xle && <div className="kpi-chg">{fmtChg(xle.regularMarketChangePercent)}</div>}
+          <AsOf at={xle?.updatedAt} />
         </div>
       </div>
 

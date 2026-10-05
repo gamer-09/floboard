@@ -179,6 +179,7 @@ export default function CurrencyPairsScreen() {
                     {d.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{price(d.regularMarketPreviousClose, dec)}</div></div>}
                     {d.fiftyTwoWeekHigh != null && <div><div className="stat-lab">52w high</div><div className="stat-val">{price(d.fiftyTwoWeekHigh, dec)}</div></div>}
                     {d.fiftyTwoWeekLow != null && <div><div className="stat-lab">52w low</div><div className="stat-val">{price(d.fiftyTwoWeekLow, dec)}</div></div>}
+                    {d.updatedAt != null && <div><div className="stat-lab">Last print</div><div className="stat-val"><AsOf at={d.updatedAt} variant="plain" /></div></div>}
                   </div>
                 </div>
               )}

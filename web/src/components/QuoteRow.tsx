@@ -57,6 +57,7 @@ export default function QuoteRow({
             {d.regularMarketDayHigh != null && <div><div className="stat-lab">Day high</div><div className="stat-val" style={{ color: 'var(--gain)' }}>{prefix}{price(d.regularMarketDayHigh, dps)}</div></div>}
             {d.regularMarketDayLow != null && <div><div className="stat-lab">Day low</div><div className="stat-val" style={{ color: 'var(--loss)' }}>{prefix}{price(d.regularMarketDayLow, dps)}</div></div>}
             {d.regularMarketPreviousClose != null && <div><div className="stat-lab">Prev close</div><div className="stat-val">{prefix}{price(d.regularMarketPreviousClose, dps)}</div></div>}
+            {d.updatedAt != null && <div><div className="stat-lab">Last print</div><div className="stat-val"><AsOf at={d.updatedAt} variant="plain" /></div></div>}
           </div>
         </div>
       )}

@@ -85,7 +85,7 @@ export function unixSec(v: unknown): number | undefined {
   return v > 1e12 ? Math.floor(v / 1000) : Math.floor(v)
 }
 
-/** "just now" / "12m ago" / "4:02 PM" / "Oct 3, 4:02 PM" */
+/** "just now" / "12m ago" / "4:02 PM" / "Oct 3, 4:02 PM" — always 12-hour so it cannot read as a price. */
 export function fmtAsOf(unix: number | null | undefined, now = Date.now()): string {
   const sec = unixSec(unix)
   if (sec == null) return ''
@@ -94,9 +94,9 @@ export function fmtAsOf(unix: number | null | undefined, now = Date.now()): stri
   const diff = now - d.getTime()
   if (diff >= 0 && diff < 45_000) return 'just now'
   if (diff >= 0 && diff < 3_600_000) return `${Math.max(1, Math.round(diff / 60_000))}m ago`
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })
   const sameDay = d.toDateString() === new Date(now).toDateString()
   if (sameDay) return time
   const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  return `${day} · ${time}`
+  return `${day}, ${time}`
 }

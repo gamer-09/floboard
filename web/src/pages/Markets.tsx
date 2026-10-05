@@ -40,10 +40,8 @@ function IndexCard({ sym, name, region }: { sym: string; name: string; region: s
         <div className="index-region">{region}</div>
         <div className="index-name">{name}</div>
         <div className="index-price">{d ? index(d.regularMarketPrice) : '—'}</div>
-        <div className="index-meta">
-          <ChangeBadge value={d ? chg : null} />
-          <AsOf at={d?.updatedAt} />
-        </div>
+        <ChangeBadge value={d ? chg : null} />
+        <AsOf at={d?.updatedAt} />
         <div style={{ marginTop: 8 }}>
           <SparklineChart symbol={sym} range="7d" width={160} height={42} color={d ? accent : undefined} />
         </div>
@@ -190,6 +188,7 @@ export default function MarketsScreen() {
                 <div className="sector-sym">{s.sym}</div>
                 <div className="sector-name">{s.label}</div>
                 <div className="sector-chg" style={{ color: text }}>{d ? fmtChg(chg) : '—'}</div>
+                <AsOf at={d?.updatedAt} />
               </div>
             )
           })}
@@ -226,6 +225,7 @@ export default function MarketsScreen() {
                       <div className="right">
                         <div className="mono" style={{ fontWeight: 700, color: col.col }}>{fmtChg(chg)}</div>
                         <div className="muted">${fmt(d?.regularMarketPrice, s.sym.includes('=X') || s.sym.includes('/') ? 4 : 2)}</div>
+                        <AsOf at={d?.updatedAt} />
                       </div>
                     </div>
                   )
@@ -254,6 +254,7 @@ export default function MarketsScreen() {
                 <span className="mono" style={{ width: 40, textAlign: 'right', fontSize: 11, color: barCol }}>
                   {d ? `${chg >= 0 ? '+' : '-'}${fmt(Math.abs(chg), 1)}` : ''}
                 </span>
+                <AsOf at={d?.updatedAt} />
               </div>
             )
           })}
@@ -262,6 +263,7 @@ export default function MarketsScreen() {
               <div className="kpi-label">VIX</div>
               <div className="macro-big" style={{ color: vixColor }}>{vixVal != null ? fmt(vixVal, 1) : '—'}</div>
               <span className="chg flat" style={{ color: vixColor, background: vixLevel === 'fear' ? 'var(--loss-dim)' : vixLevel === 'greed' ? 'var(--gain-dim)' : 'var(--amber-dim)' }}>{vixVal ? vixLabel : 'N/A'}</span>
+              <AsOf at={vix?.updatedAt} />
             </div>
             <div style={{ width: 1, background: 'var(--rim)' }} />
             <div className="macro-cell">
@@ -270,6 +272,7 @@ export default function MarketsScreen() {
                 {dxy?.regularMarketPrice != null ? fmt(dxy.regularMarketPrice, 2) : '—'}
               </div>
               <div className="muted">{dxyChg != null ? fmtChg(dxyChg) : ''}</div>
+              <AsOf at={dxy?.updatedAt} />
             </div>
           </div>
         </div>
