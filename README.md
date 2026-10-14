@@ -4,7 +4,7 @@
 
 FloBoard is a mobile/web financial markets dashboard built with React Native + Expo, backed by an
 Express API server that pulls live data from Yahoo Finance. This repo is a pnpm workspace
-monorepo containing the app, the API server, and a few shared internal libraries.
+monorepo containing the app, the web client, the API server, and a few shared internal libraries.
 
 ## What's in the app
 
@@ -37,7 +37,8 @@ for the failure server-side instead of surfacing an empty screen.
 artifacts/
   floboard/       # the Expo/React Native app described above
   api-server/     # Express API — quotes, news, earnings, chat (FloAI), proxied from Yahoo Finance
-  mockup-sandbox/ # unrelated Replit sandbox project, not part of the FloBoard app
+web/              # the browser client (Vite + React Router) — this is what GitHub Pages serves
+docs/             # an older built copy of the web client, kept for reference; not deployed
 lib/
   db/                 # Postgres schema (Drizzle ORM) — optional locally, see below
   api-spec/           # OpenAPI spec shared by the generated clients below
@@ -48,8 +49,8 @@ scripts/          # misc workspace-level scripts
 
 ## Requirements
 
-- Node.js 24+
-- **pnpm** — this repo only works with pnpm (npm/yarn are actively blocked by a preinstall check)
+- Node.js 20+ (CI and the published Docker build run Node 20)
+- **pnpm** 9.15+ — this repo only works with pnpm (npm/yarn are actively blocked by a preinstall check)
 - [Expo Go](https://expo.dev/go) on your phone, or a simulator, if you want to run FloBoard on a
   device instead of the web
 
@@ -74,13 +75,26 @@ You need two terminals — one for the API server, one for the app.
 ```bash
 pnpm --filter @workspace/api-server run dev
 ```
-Starts on `http://localhost:5000` by default.
+The server reads `PORT` and listens on **8080** when it isn't set. The app's `dev:local` script
+(terminal 2) points at `http://localhost:5000`, so either start the API on that port:
+
+```bash
+PORT=5000 pnpm --filter @workspace/api-server run dev          # bash / Git Bash
+# cmd.exe:      set PORT=5000 && pnpm --filter @workspace/api-server run dev
+# PowerShell:   $env:PORT=5000; pnpm --filter @workspace/api-server run dev
+```
+
+…or leave the API on 8080 and point the app at it with the plain `dev` script:
+
+```bash
+EXPO_PUBLIC_API_URL=http://localhost:8080 pnpm --filter @workspace/floboard run dev
+```
 
 **Terminal 2 — FloBoard:**
 ```bash
 pnpm --filter @workspace/floboard run dev:local
 ```
-This points the app at your local API server automatically. Once Metro Bundler starts, either
+This points the app at `http://localhost:5000` automatically. Once Metro Bundler starts, either
 scan the QR code with Expo Go, or press `w` to open the web version.
 
 Other floboard scripts, if you need them:
@@ -89,6 +103,20 @@ Other floboard scripts, if you need them:
 - `dev:tunnel` — `expo start --tunnel`, for testing on a device that isn't on the same network
 - `dev:replit` — the Replit-specific variant (wires up Replit's proxy/domain env vars); not needed
   for local development
+
+### The web client
+
+`web/` is the browser build of the same dashboard (Vite + React). On Pages it runs under
+`/floboard/` with hash routing (`https://gamer-09.github.io/floboard/#/markets`), and
+`web/public/404.html` forwards any old path-style link into that hash route. It talks to the API
+server through `VITE_API_URL` when you set one, and otherwise falls back to the deployed Render
+API:
+
+```bash
+cd web
+npm ci
+npm run dev      # or: npm run build
+```
 
 ## FloAI (optional)
 
@@ -105,7 +133,7 @@ not a place for a long-running Node server).
 
 1. Push this repo to GitHub, then in the Render dashboard choose **New > Blueprint** and connect
    the repo. Render reads `render.yaml` at the repo root and provisions the `floboard-api`
-   service automatically (Docker build, health check at `/api/healthz`).
+   service automatically (Docker build, `PORT=8080`, health check at `/api/healthz`).
 2. After the first deploy, open the service and set **`GEMINI_API_KEY`** under **Environment**
    (only required for the FloAI chat feature). It's deliberately `sync: false` in the blueprint
    so the key never lives in git.
@@ -118,14 +146,18 @@ not a place for a long-running Node server).
    `EXPO_PUBLIC_API_URL` at the deployed URL. If your Render URL differs, update it there and in
    the `!__DEV__` fallback in `artifacts/floboard/utils/apiBase.ts`.
 
+## Deploying the web client
+
+GitHub Pages serves `web/`: `.github/workflows/deploy.yml` builds `web/` and publishes `web/dist`
+on every push to `main` that touches `web/**` (or via a manual run of that workflow). The live URL
+is <https://gamer-09.github.io/floboard/>.
+
 ## Privacy policy
 
-App Store Connect and Google Play Console both require a publicly hosted privacy policy URL.
-It's published to GitHub Pages from the `docs/` folder by `.github/workflows/pages.yml`:
-
-```
-https://gamer-09.github.io/floboard/privacy-policy.html
-```
+The policy ships inside the app as a screen — `artifacts/floboard/app/privacy-policy.tsx`, reachable
+from **About** in Settings. There is no separate hosted policy page any more: the old
+`/floboard/privacy-policy.html` address that GitHub Pages used to serve no longer exists, so use the
+in-app screen if you need to point a store listing at the policy.
 
 ## Tests
 
@@ -144,7 +176,7 @@ pnpm run test
 ```
 
 CI runs typecheck + tests on every push to `main` and on pull requests
-(`.github/workflows/ci.yml`).
+(`.github/workflows/ci.yml`, pnpm 9.15.0 on Node 20).
 
 ## Workspace-wide commands
 
