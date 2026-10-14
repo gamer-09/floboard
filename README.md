@@ -15,7 +15,7 @@ monorepo containing the app, the web client, the API server, and a few shared in
   commodities.
 - **FX & Metals** — 90+ currency pairs (majors, minors, and emerging-market crosses) plus a
   dedicated Metals group for spot gold/silver/platinum/palladium.
-- **Crypto** — ~80 coins grouped by category (stablecoins, mega/large-caps, Layer 2, DeFi, AI
+- **Crypto** — ~90 coins grouped by category (stablecoins, mega/large-caps, Layer 2, DeFi, AI
   tokens, gaming/Web3, meme coins).
 - **News** — market headlines tagged bullish/bearish/neutral.
 - **Portfolio** — simulated position tracking and analytics (no real brokerage connection —
